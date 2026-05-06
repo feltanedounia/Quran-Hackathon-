@@ -18,7 +18,9 @@ At the core of the system, machine learning models user behavior as a time-serie
 * Behavioral tracking (streaks, reading time, consistency)
 * Gamified garden growth system based on user activity
 * Real-time behavioral signals through session tracking
-* Historical tracking of user thoughts on ayat
+* User interaction with a variety translations
+* Verses and reminders of the day
+* Reading (translation), Reciting (khatma), memorization
 * Backend API for real-time predictions
 
 ---
