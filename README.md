@@ -1,10 +1,10 @@
-# name of the project still undecided
+# Rawdah: An Intelligent Garden for Quranic Growth
 
 ## Introduction
 
 A web application that helps users build a consistent relationship with the Quran through behavioral intelligence. It models engagement as a time-series process, predicts when a user is likely to disengage, and delivers gentle, personalized interventions to support continuity.
 
-"name" is an interactive system that combines an immersive 3D experience with intelligent behavioral modeling to encourage consistent engagement with the Quran. At the center of the experience is a dynamic virtual garden that evolves based on the user’s reading habits. Each action contributes to the growth, health, and richness of the garden, transforming consistency into visible progress. The environment responds in real time, creating a deeply engaging and motivating experience that reflects the user’s spiritual journey. Alongside this, users can read the Quran seamlessly within the application, access translations, and explore authentic tafsir, making the experience both visually immersive and intellectually meaningful.
+"Rawdah" is an interactive system that combines an immersive 3D experience with intelligent behavioral modeling to encourage consistent engagement with the Quran. At the center of the experience is a dynamic virtual garden that evolves based on the user’s reading habits. Each action contributes to the growth, health, and richness of the garden, transforming consistency into visible progress. The environment responds in real time, creating a deeply engaging and motivating experience that reflects the user’s spiritual journey. Alongside this, users can read the Quran seamlessly within the application, access translations, and explore authentic tafsir, making the experience both visually immersive and intellectually meaningful.
 
 Beyond reading, users are encouraged to reflect on the verses they engage with by writing personal insights. These reflections are saved over time, allowing users to revisit their thoughts and observe how their understanding develops. The system then responds with verified tafsir-based explanations, helping align personal interpretations with established scholarship while preserving a sense of individual connection.
 
