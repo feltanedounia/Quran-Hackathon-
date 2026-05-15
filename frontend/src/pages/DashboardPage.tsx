@@ -8,6 +8,7 @@ import { getMe } from '../api/auth'
 import { getDailyVerse } from '../api/verses'
 import { getEngagement } from '../api/reading'
 import GardenScene from '../components/garden/GardenScene'
+import GardenLegend from '../components/garden/GardenLegend'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Navbar from '../components/ui/Navbar'
 
@@ -77,20 +78,44 @@ export default function DashboardPage() {
               )}
             </Suspense>
 
-            {/* Garden overlay - top left */}
+            {/* Garden overlay - top left: level + plant summary */}
             {garden && (
               <div className="absolute top-4 left-4">
-                <div className="glass rounded-2xl px-4 py-3 shadow-lg">
+                <div className="glass rounded-2xl px-4 py-3 shadow-lg max-w-[220px]">
                   <div className="text-xs text-gray-500 mb-1">Your Garden</div>
                   <GardenLevelBar level={garden.level} levelName={garden.level_name} />
-                  <div className="flex gap-3 mt-2 text-xs text-gray-600">
-                    <span>🌸 {garden.flowers} flowers</span>
-                    <span>🌳 {garden.branches} trees</span>
-                    {garden.streak_flowers > 0 && <span>⭐ {garden.streak_flowers} golden</span>}
+                  <div className="flex flex-wrap gap-2 mt-2 text-xs text-gray-600">
+                    {garden.petals > 0 && <span>🌷 ×{garden.petals}</span>}
+                    {garden.flowers > 0 && <span>🌹 ×{Math.min(Math.floor(garden.flowers/2),15)}</span>}
+                    {garden.branches > 0 && <span>💜 ×{Math.min(garden.branches*2,8)}</span>}
+                    {garden.streak_flowers > 0 && <span>🌼 ×{Math.min(garden.streak_flowers,6)}</span>}
+                    {garden.level >= 3 && <span>🌳 رمان</span>}
+                    {garden.level >= 4 && <span>🌴 نخل</span>}
+                    {garden.level >= 5 && <span>🍃 تين</span>}
+                    {garden.level >= 6 && <span>🫒 زيتون</span>}
                   </div>
                 </div>
               </div>
             )}
+
+            {/* Activity mode badges - top right area */}
+            <div className="absolute top-4 right-16 flex flex-col gap-1.5">
+              <div className="glass rounded-xl px-2.5 py-1.5 text-xs flex items-center gap-1.5 shadow-sm">
+                <span>📖</span><span className="text-gray-600 font-medium">Reading</span><span className="text-garden-600 font-bold">→ 🌷</span>
+              </div>
+              <div className="glass rounded-xl px-2.5 py-1.5 text-xs flex items-center gap-1.5 shadow-sm">
+                <span>🎙️</span><span className="text-gray-600 font-medium">Recitation</span><span className="text-red-500 font-bold">→ 🌹</span>
+              </div>
+              <div className="glass rounded-xl px-2.5 py-1.5 text-xs flex items-center gap-1.5 shadow-sm">
+                <span>🧠</span><span className="text-gray-600 font-medium">Hifdh</span><span className="text-purple-600 font-bold">→ 💜</span>
+              </div>
+              <div className="glass rounded-xl px-2.5 py-1.5 text-xs flex items-center gap-1.5 shadow-sm">
+                <span>🔥</span><span className="text-gray-600 font-medium">Streak</span><span className="text-yellow-600 font-bold">→ 🌼</span>
+              </div>
+            </div>
+
+            {/* Garden Legend toggle — positioned for the legend component */}
+            <GardenLegend gardenState={garden} />
 
             {/* Begin Journey button */}
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2">

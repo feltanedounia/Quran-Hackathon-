@@ -103,6 +103,41 @@ quran-hackathon/
 
 ---
 
+## API Usage
+
+### External Quran APIs (fulfills contest requirement)
+- Quran Foundation / Quran CDN (documentation: https://api-docs.quran.foundation/). The backend uses the Quran CDN base endpoint `https://api.qurancdn.com/api/qdc` (see `backend/services/quran_api.py`) to fetch:
+	- Chapters and metadata
+	- Verses by chapter and by key (translations and Arabic text)
+	- Translation text (Translation ID configured in the service)
+	- Tafsir text (Tafsir ID configured in the service)
+	- Audio recitation URLs (reciter ID used to request recitations)
+
+This satisfies the requirement to use at least one of the Quran APIs (translation, tafsir, audio, verses).
+
+### AI / Language model
+- Anthropic (Claude) via the `anthropic` Python client is used for interpretation feedback and personalized nudges (`backend/services/ai.py`). Set `ANTHROPIC_API_KEY` in your environment to enable AI features.
+
+### Internal user-facing APIs (our REST endpoints)
+The frontend communicates with the backend via an axios client (`frontend/src/api/client.ts`, base `/api`). Key endpoints exposed by the backend include:
+- Auth: `POST /auth/register`, `POST /auth/login`, `GET /auth/me`, `PUT /auth/me`, `POST /auth/me/photo`
+- Verses / Tafsir features: `GET /verses/daily`, `POST /verses/interpret`, `GET /verses/interpretations`, `GET /verses/review-queue`, `POST /verses/review/{id}`
+- Reading / user tracking: `POST /reading/session`, `POST /reading/session/{id}/photo`, `GET /reading/sessions`, `GET /reading/streak`, `GET /reading/engagement`
+- Garden: `GET /garden/`
+- Milestones: `GET /milestones/`, `POST /milestones/{id}/share`
+- Buddies / social: `POST /buddies/request`, `GET /buddies/me`, `POST /buddies/message`, `GET /buddies/messages`, `DELETE /buddies/leave`, `GET /buddies/sadaqa`, `POST /buddies/sadaqa`
+
+These endpoints provide the required "user APIs" for bookmarks/streaks/reading tracking and personalization (streaks, sessions, milestones, buddy sharing).
+
+### Environment & notes
+- To enable AI features, add `ANTHROPIC_API_KEY` to `backend/.env` or your environment.
+- The Quran endpoints and IDs are defined in `backend/services/quran_api.py` (`BASE_URL`, `TRANSLATION_ID`, `TAFSIR_ID`, `RECITER_ID`).
+
+### Compliance summary
+- Meets contest requirements: uses Quran APIs (translation/tafsir/audio) and app-level user APIs (streaks, sessions, interpretations) to build habit-forming, accessible, and personalized experiences.
+
+---
+
 ## Future Improvements
 
 * Real user data integration
