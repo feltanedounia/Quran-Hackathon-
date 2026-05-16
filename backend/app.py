@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 import os
 
@@ -54,9 +53,16 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Configure CORS for Vercel frontend + localhost development
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",  # Vite dev
+    os.getenv("FRONTEND_URL", "https://your-vercel-app.vercel.app"),  # Set via env
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten in production
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -78,21 +84,3 @@ app.include_router(milestones.router, prefix="/api")
 @app.get("/health")
 def health():
     return {"status": "ok", "app": "Bloom"}
-
-
-# Serve the built React frontend — must be last so API routes take priority
-_frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
-if os.path.isdir(_frontend_dist):
-    app.mount("/assets", StaticFiles(directory=os.path.join(_frontend_dist, "assets")), name="assets")
-
-    @app.get("/", include_in_schema=False)
-    def serve_frontend_index():
-        return FileResponse(os.path.join(_frontend_dist, "index.html"))
-
-    @app.get("/{full_path:path}", include_in_schema=False)
-    def serve_frontend(full_path: str):
-        if full_path.startswith("api/") or full_path == "api":
-            return {"detail": "Not Found"}
-        if full_path.startswith("uploads/"):
-            return {"detail": "Not Found"}
-        return FileResponse(os.path.join(_frontend_dist, "index.html"))
