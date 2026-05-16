@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
-const client = axios.create({ baseURL: https://rawdah-quran-hackathon-project-7.onrender.com/ })
+const client = axios.create({ baseURL: "https://rawdah-quran-hackathon-project-7.onrender.com/" })
 
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('rawdah_token')
