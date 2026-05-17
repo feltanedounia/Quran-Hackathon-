@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { BookOpen, ChevronLeft, Sparkles, Volume2, RefreshCw } from 'lucide-react'
+import { BookOpen, Bookmark, ChevronLeft, Sparkles, Volume2, RefreshCw } from 'lucide-react'
 import { logSession } from '../api/reading'
 import { getDailyVerse } from '../api/verses'
+import { addBookmark, listBookmarks } from '../api/bookmarks'
 import SessionTimer from '../components/session/SessionTimer'
 import Navbar from '../components/ui/Navbar'
 import type { ActivityType } from '../types'
@@ -59,6 +60,20 @@ export default function SessionPage() {
     queryKey: ['daily-verse'],
     queryFn: getDailyVerse,
     staleTime: 24 * 60 * 60_000,
+  })
+
+  const { data: bookmarks } = useQuery({ queryKey: ['bookmarks'], queryFn: listBookmarks })
+  const isBookmarked = verse ? bookmarks?.some(b => b.verse_key === verse.verse_key) : false
+
+  const { mutate: bookmarkVerse, isPending: bookmarking } = useMutation({
+    mutationFn: () => addBookmark({
+      verse_key: verse!.verse_key,
+      surah_number: verse!.surah_number,
+      ayah_number: verse!.ayah_number,
+      surah_name: verse!.surah_name,
+      verse_text: `${verse!.text_arabic} — ${verse!.text_translation}`,
+    }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookmarks'] }),
   })
 
   const { mutate: saveSession, isPending: saving } = useMutation({
@@ -145,13 +160,21 @@ export default function SessionPage() {
                 <div className="mt-8 p-4 bg-garden-50 rounded-2xl border border-garden-100">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-semibold text-garden-600">Today's Verse</span>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                       {verse.audio_url && (
                         <a href={verse.audio_url} target="_blank" rel="noopener noreferrer"
                           className="text-garden-500 hover:text-garden-700">
                           <Volume2 className="w-4 h-4" />
                         </a>
                       )}
+                      <button
+                        onClick={() => !isBookmarked && bookmarkVerse()}
+                        disabled={bookmarking || isBookmarked}
+                        title={isBookmarked ? 'Bookmarked' : 'Bookmark this verse'}
+                        className={`transition-colors ${isBookmarked ? 'text-garden-600' : 'text-garden-400 hover:text-garden-600'}`}
+                      >
+                        <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-garden-600' : ''}`} />
+                      </button>
                       <button onClick={() => refetchVerse()} className="text-garden-500 hover:text-garden-700">
                         <RefreshCw className="w-4 h-4" />
                       </button>

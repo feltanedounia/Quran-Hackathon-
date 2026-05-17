@@ -102,6 +102,10 @@ class User(Base):
     current_hifd = Column(String, nullable=True)
     current_hifd_last_activity = Column(Date, nullable=True)
 
+    # Quran Foundation OAuth tokens (for User API integration)
+    qf_access_token = Column(Text, nullable=True)
+    qf_refresh_token = Column(Text, nullable=True)
+
     # Stats (denormalized for speed)
     streak_count = Column(Integer, default=0)
     longest_streak = Column(Integer, default=0)
@@ -113,6 +117,7 @@ class User(Base):
     sessions = relationship("ReadingSession", back_populates="user")
     interpretations = relationship("Interpretation", back_populates="user")
     milestones = relationship("Milestone", back_populates="user")
+    bookmarks = relationship("Bookmark", back_populates="user", cascade="all, delete-orphan")
     sadaqa_resources = relationship("BuddyResource", back_populates="user")
     groups_created = relationship("Group", foreign_keys="Group.creator_id", back_populates="creator")
     group_memberships = relationship("GroupMember", back_populates="user")
@@ -213,3 +218,20 @@ class Milestone(Base):
     shared_with_buddy = Column(Boolean, default=False)
 
     user = relationship("User", back_populates="milestones")
+
+
+class Bookmark(Base):
+    """Local bookmark record, optionally synced with the Quran Foundation User API."""
+    __tablename__ = "bookmarks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    verse_key = Column(String, nullable=False)        # e.g. "2:255"
+    surah_number = Column(Integer, nullable=False)
+    ayah_number = Column(Integer, nullable=False)
+    surah_name = Column(String, nullable=True)
+    verse_text = Column(Text, nullable=True)           # Arabic + translation snippet
+    qf_bookmark_id = Column(String, nullable=True)    # ID returned by QF User API after sync
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="bookmarks")

@@ -59,7 +59,18 @@ def _ensure_interpretation_review_columns():
 
 _ensure_interpretation_review_columns()
 
-from routes import auth, reading, verses, garden, buddies, milestones
+def _ensure_user_qf_columns():
+    qf_columns = {"qf_access_token": "TEXT", "qf_refresh_token": "TEXT"}
+    with engine.begin() as conn:
+        existing = _get_existing_columns(conn, "users")
+        for col, typ in qf_columns.items():
+            if col not in existing:
+                conn.exec_driver_sql(f"ALTER TABLE users ADD COLUMN {col} {typ}")
+
+
+_ensure_user_qf_columns()
+
+from routes import auth, reading, verses, garden, buddies, milestones, bookmarks
 
 app = FastAPI(
     title="Bloom — Quran Engagement API",
@@ -93,6 +104,7 @@ app.include_router(verses.router,     prefix="/api")
 app.include_router(garden.router,     prefix="/api")
 app.include_router(buddies.router,    prefix="/api")
 app.include_router(milestones.router, prefix="/api")
+app.include_router(bookmarks.router,  prefix="/api")
 
 
 @app.get("/health")

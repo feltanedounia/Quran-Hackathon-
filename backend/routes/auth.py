@@ -2,11 +2,13 @@ import aiofiles
 import os
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from database import get_db
 import models
 import schemas
 import auth as auth_utils
+from services import qf_user_api
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
@@ -59,6 +61,57 @@ def update_me(
         if value is not None:
             setattr(current_user, field, value)
 
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@router.get("/qf-connect")
+def qf_connect(current_user: models.User = Depends(auth_utils.get_current_user)):
+    """Redirect user to Quran Foundation OAuth login to connect their QF account."""
+    if not qf_user_api.is_configured():
+        raise HTTPException(status_code=503, detail="Quran Foundation integration is not configured")
+
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    redirect_uri = f"{frontend_url}/qf-callback"
+    params = (
+        f"response_type=code"
+        f"&client_id={qf_user_api.QF_CLIENT_ID}"
+        f"&redirect_uri={redirect_uri}"
+        f"&scope=bookmarks"
+    )
+    return RedirectResponse(url=f"{qf_user_api.QF_AUTH_BASE}/oauth2/authorize?{params}")
+
+
+@router.get("/qf-callback")
+async def qf_callback(
+    code: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth_utils.get_current_user),
+):
+    """Exchange QF OAuth code for tokens and save them to the user record."""
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    redirect_uri = f"{frontend_url}/qf-callback"
+
+    token_data = await qf_user_api.exchange_code(code, redirect_uri)
+    if not token_data:
+        raise HTTPException(status_code=400, detail="Failed to exchange Quran Foundation OAuth code")
+
+    current_user.qf_access_token = token_data.get("access_token")
+    current_user.qf_refresh_token = token_data.get("refresh_token")
+    db.commit()
+    db.refresh(current_user)
+    return {"ok": True, "qf_connected": True}
+
+
+@router.delete("/qf-disconnect", response_model=schemas.UserOut)
+def qf_disconnect(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth_utils.get_current_user),
+):
+    """Remove stored QF tokens (disconnects QF account sync)."""
+    current_user.qf_access_token = None
+    current_user.qf_refresh_token = None
     db.commit()
     db.refresh(current_user)
     return current_user

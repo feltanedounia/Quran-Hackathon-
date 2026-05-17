@@ -1,154 +1,174 @@
-# Rawdah: An Intelligent Garden for Quranic Growth
+# Rawdah — A Living Garden for Quranic Growth
 
 ## Introduction
 
-A web application that helps users build a consistent relationship with the Quran through behavioral intelligence. It models engagement as a time-series process, predicts when a user is likely to disengage, and delivers gentle, personalized interventions to support continuity.
+Rawdah is a web application that helps users build a consistent relationship with the Quran through behavioral intelligence. It models engagement as a time-series process, predicts when a user is likely to disengage, and delivers gentle, personalized interventions to support continuity.
 
-"Rawdah" is an interactive system that combines an immersive 3D experience with intelligent behavioral modeling to encourage consistent engagement with the Quran. At the center of the experience is a dynamic virtual garden that evolves based on the user’s reading habits. Each action contributes to the growth, health, and richness of the garden, transforming consistency into visible progress. The environment responds in real time, creating a deeply engaging and motivating experience that reflects the user’s spiritual journey. Alongside this, users can read the Quran seamlessly within the application, access translations, and explore authentic tafsir, making the experience both visually immersive and intellectually meaningful.
+At the center of the experience is a dynamic 3D virtual garden that evolves based on reading habits — flourishing with consistency, slowing with irregular activity. Users read the Quran within the app, access translations, explore authentic tafsir, write personal reflections, track streaks, and bookmark meaningful verses — all synced with the Quran Foundation's official APIs.
 
-Beyond reading, users are encouraged to reflect on the verses they engage with by writing personal insights. These reflections are saved over time, allowing users to revisit their thoughts and observe how their understanding develops. The system then responds with verified tafsir-based explanations, helping align personal interpretations with established scholarship while preserving a sense of individual connection.
+---
 
-At the core of the system, machine learning models user behavior as a time-series process. By analyzing patterns such as reading frequency, session duration, streak consistency, and recent activity trends, the model predicts the likelihood of disengagement. Based on these predictions, the system delivers subtle, personalized interventions and dynamically adjusts the state of the garden, turning behavioral insights into a meaningful and motivating visual experience.
+## Quran Foundation API Usage
+
+This project uses the **Quran Foundation API** (`https://api-docs.quran.foundation/`) and satisfies **both** API requirements of the hackathon.
+
+### Content APIs (Requirement 1)
+
+All content is fetched from the Quran Foundation's CDN endpoint (`https://api.qurancdn.com/api/qdc`) in `backend/services/quran_api.py`:
+
+| API | Endpoint | Usage |
+|-----|----------|-------|
+| **Chapters API** | `GET /chapters` | Surah names and metadata |
+| **Verses API** | `GET /verses/by_chapter/{n}` | Daily verse selection with Arabic text |
+| **Verses API** | `GET /verses/by_key/{key}` | Fetch specific verse by key (e.g. `2:255`) |
+| **Translation API** | `translations` param (ID `131`) | Dr. Mustafa Khattab — The Clear Quran (English) |
+| **Tafsir API** | `GET /tafsirs/169/by_ayah/{key}` | Tafsir Ibn Kathir (English, abridged) |
+| **Audio Recitation API** | `audio` param (reciter ID `7`) | Mishary Rashid Al-Afasy recitations |
+
+These power the daily verse display (Arabic + translation + audio player), the tafsir shown after user reflections, and verse-by-key lookups throughout the app.
+
+### User APIs (Requirement 2)
+
+User bookmarks are synced with the **Quran Foundation User API** (`https://apis.quran.foundation/auth/v1/`) in `backend/services/qf_user_api.py` and `backend/routes/bookmarks.py`:
+
+| API | Endpoint | Usage |
+|-----|----------|-------|
+| **Bookmarks — Add** | `POST /auth/v1/bookmarks` | When user bookmarks a verse, it is saved to QF |
+| **Bookmarks — List** | `GET /auth/v1/bookmarks` | Retrieve user's QF bookmarks |
+| **Bookmarks — Delete** | `DELETE /auth/v1/bookmarks/{id}` | Remove bookmark from QF |
+
+Authentication uses the **Quran Foundation OAuth 2.0** flow (PKCE / authorization code):
+- `GET /api/auth/qf-connect` — redirects user to QF login
+- `GET /api/auth/qf-callback` — exchanges code for tokens, stored per user
+- `DELETE /api/auth/qf-disconnect` — unlinks QF account
+
+When a user connects their QF account and bookmarks a verse in Rawdah, the bookmark is created locally **and** synced to their official Quran Foundation account — so their bookmarks follow them across any QF-connected app.
+
+**Environment variables required for QF User API:**
+```
+QF_CLIENT_ID=<your registered QF client id>
+QF_CLIENT_SECRET=<your registered QF client secret>
+```
 
 ---
 
 ## Features
 
-* Machine learning model predicting engagement and disengagement risk
-* Behavioral tracking (streaks, reading time, consistency)
-* Gamified garden growth system based on user activity
-* Real-time behavioral signals through session tracking
-* User interaction with a variety translations
-* Verses and reminders of the day
-* Reading (translation), Reciting (khatma), memorization
-* Backend API for real-time predictions
+- Machine learning model predicting engagement and disengagement risk
+- Behavioral tracking: streaks, reading time, session consistency
+- Gamified 3D garden that grows with every reading session
+- Daily verse with Arabic text, English translation, and audio recitation (QF Content API)
+- Tafsir Ibn Kathir shown for every verse reflection (QF Tafsir API)
+- Verse bookmarks synced to the Quran Foundation User API
+- Personal reflections saved and compared against scholarly tafsir
+- Spaced-repetition review queue for revisiting reflections
+- Reading buddy matching and accountability messaging
+- Milestone awards (streaks, verses read, first reflection, etc.)
 
 ---
 
-## Technologies Used
+## Technologies
 
-* Python
-* Flask (backend API)
-* scikit-learn (machine learning)
-* pandas (data processing)
-* HTML / CSS / JavaScript (frontend)
-* Git & GitHub (version control)
+| Layer | Stack |
+|-------|-------|
+| Frontend | React + TypeScript, Vite, Tailwind CSS, Three.js (3D garden) |
+| Backend | FastAPI (Python), SQLAlchemy, PostgreSQL (Render) |
+| Auth | JWT (internal) + OAuth 2.0 (Quran Foundation) |
+| APIs | Quran Foundation Content API, Quran Foundation User API |
+| ML | scikit-learn (engagement prediction), pandas |
+| Deploy | Vercel (frontend), Render (backend + PostgreSQL) |
 
 ---
 
-## Installation
+## Live Demo
 
-Clone the repository:
+- **Frontend:** https://rawdah-quran-hackathon-project-81v3-4s90zqiib.vercel.app
+- **Backend API:** https://rawdah-quran-hackathon-project-7.onrender.com
+- **API Docs:** https://rawdah-quran-hackathon-project-7.onrender.com/docs
+
+---
+
+## Local Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/quran-hackathon.git
-cd quran-hackathon
+git clone https://github.com/feltanedounia/Rawdah-Quran-Hackathon-project.git
+cd Rawdah-Quran-Hackathon-project
 ```
 
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## How to Run
-
-Start the backend server:
-
+**Backend:**
 ```bash
 cd backend
-python app.py
+pip install -r requirements.txt
+cp .env.example .env   # fill in SECRET_KEY, and optionally QF_CLIENT_ID/SECRET
+uvicorn app:app --reload
 ```
 
-The server will run on:
-
-```
-http://127.0.0.1:5000/
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
 ---
 
-## How to Use
+## Environment Variables
 
-1. The user presses  a start button to start their Quran reading activity.
-2. The frontend sends the user's daily log to the backend `/predict` endpoint.
-3. The machine learning model evaluates engagement patterns and returns a disengagement risk score.
-4. Based on the result:
+### Backend (`backend/.env`)
+```
+SECRET_KEY=<random secret for JWT signing>
+DATABASE_URL=                    # leave blank for local SQLite
+FRONTEND_URL=http://localhost:5173
 
-* The garden dynamically evolves as a whole ecosystem — flourishing with consistent engagement, slowing down with irregular activity, or gradually weakening when disengagement is detected
-* Different elements of the garden (plants, colors, environment) respond to user behavior, making progress and decline visually meaningful
-* A personalized, context-aware message is displayed to gently guide the user back to consistency
+# Quran Foundation User API (optional — enables bookmark sync)
+QF_CLIENT_ID=
+QF_CLIENT_SECRET=
+```
 
-5. Users can optionally write reflections on the ayah they read.
-6. The system also has tafsir-based explanations and stores past reflections, allowing users to revisit and track how their understanding evolves over time.
-
+### Frontend (`frontend/.env.production`)
+```
+VITE_API_URL=https://rawdah-quran-hackathon-project-7.onrender.com/api
+```
 
 ---
 
 ## Project Structure
 
 ```
-quran-hackathon/
-│
-├── backend/          # Flask API
-├── models/           # Trained ML model (.pkl)
-├── data/             # Dataset (synthetic or real)
-├── frontend/         # UI (plant visualization)
-├── 3d-design/        # 3D assets and visuals
-├── requirements.txt
+Rawdah-Quran-Hackathon-project/
+├── backend/
+│   ├── app.py                  # FastAPI app + CORS + DB init
+│   ├── models.py               # SQLAlchemy models
+│   ├── routes/
+│   │   ├── auth.py             # Login, register, QF OAuth connect
+│   │   ├── verses.py           # Daily verse, interpretations, review
+│   │   ├── bookmarks.py        # Bookmark CRUD + QF User API sync
+│   │   ├── reading.py          # Session logging, streaks
+│   │   ├── garden.py           # Garden state
+│   │   ├── milestones.py       # Milestone tracking
+│   │   └── buddies.py          # Buddy matching + messaging
+│   └── services/
+│       ├── quran_api.py        # Quran Foundation Content API calls
+│       ├── qf_user_api.py      # Quran Foundation User API calls (bookmarks)
+│       ├── ai.py               # Tafsir-based interpretation feedback
+│       └── milestones.py       # Milestone award logic
+├── frontend/
+│   └── src/
+│       ├── api/
+│       │   ├── bookmarks.ts    # Bookmark API (calls /api/bookmarks)
+│       │   ├── verses.ts       # Verse/tafsir API
+│       │   └── ...
+│       └── pages/
+│           ├── SessionPage.tsx # Session timer + bookmark button
+│           └── ...
+├── model/                      # Trained ML engagement model
+├── data/                       # Training dataset
+├── render.yaml                 # Render deployment config
 └── README.md
 ```
-
----
-
-## API Usage
-
-### External Quran APIs (fulfills contest requirement)
-- Quran Foundation / Quran CDN (documentation: https://api-docs.quran.foundation/). The backend uses the Quran CDN base endpoint `https://api.qurancdn.com/api/qdc` (see `backend/services/quran_api.py`) to fetch:
-	- Chapters and metadata
-	- Verses by chapter and by key (translations and Arabic text)
-	- Translation text (Translation ID configured in the service)
-	- Tafsir text (Tafsir ID configured in the service)
-	- Audio recitation URLs (reciter ID used to request recitations)
-
-This satisfies the requirement to use at least one of the Quran APIs (translation, tafsir, audio, verses).
-
-### AI / Language model
-- Anthropic (Claude) via the `anthropic` Python client is used for interpretation feedback and personalized nudges (`backend/services/ai.py`). Set `ANTHROPIC_API_KEY` in your environment to enable AI features.
-
-### Internal user-facing APIs (our REST endpoints)
-The frontend communicates with the backend via an axios client (`frontend/src/api/client.ts`, base `/api`). Key endpoints exposed by the backend include:
-- Auth: `POST /auth/register`, `POST /auth/login`, `GET /auth/me`, `PUT /auth/me`, `POST /auth/me/photo`
-- Verses / Tafsir features: `GET /verses/daily`, `POST /verses/interpret`, `GET /verses/interpretations`, `GET /verses/review-queue`, `POST /verses/review/{id}`
-- Reading / user tracking: `POST /reading/session`, `POST /reading/session/{id}/photo`, `GET /reading/sessions`, `GET /reading/streak`, `GET /reading/engagement`
-- Garden: `GET /garden/`
-- Milestones: `GET /milestones/`, `POST /milestones/{id}/share`
-- Buddies / social: `POST /buddies/request`, `GET /buddies/me`, `POST /buddies/message`, `GET /buddies/messages`, `DELETE /buddies/leave`, `GET /buddies/sadaqa`, `POST /buddies/sadaqa`
-
-These endpoints provide the required "user APIs" for bookmarks/streaks/reading tracking and personalization (streaks, sessions, milestones, buddy sharing).
-
-### Environment & notes
-- To enable AI features, add `ANTHROPIC_API_KEY` to `backend/.env` or your environment.
-- The Quran endpoints and IDs are defined in `backend/services/quran_api.py` (`BASE_URL`, `TRANSLATION_ID`, `TAFSIR_ID`, `RECITER_ID`).
-
-### Compliance summary
-- Meets contest requirements: uses Quran APIs (translation/tafsir/audio) and app-level user APIs (streaks, sessions, interpretations) to build habit-forming, accessible, and personalized experiences.
-
----
-
-## Future Improvements
-
-* Real user data integration
-* Advanced time-series modeling (LSTM / sequence models)
-* More personalized interventions
-* Mobile app version
-* Enhanced 3D interactive plant visualization
 
 ---
 
 ## License
 
 This project is for educational and hackathon purposes.
-

@@ -194,6 +194,29 @@ class MilestoneOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Bookmarks ──────────────────────────────────────────────────────────────────
+
+class BookmarkCreate(BaseModel):
+    verse_key: str
+    surah_number: int
+    ayah_number: int
+    surah_name: Optional[str] = None
+    verse_text: Optional[str] = None
+
+
+class BookmarkOut(BaseModel):
+    id: int
+    verse_key: str
+    surah_number: int
+    ayah_number: int
+    surah_name: Optional[str]
+    verse_text: Optional[str]
+    qf_bookmark_id: Optional[str]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 # ── Engagement / ML ────────────────────────────────────────────────────────────
 
 class EngagementStatus(BaseModel):
