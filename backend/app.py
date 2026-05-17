@@ -12,6 +12,20 @@ import models  # ensure all models are registered
 Base.metadata.create_all(bind=engine)
 
 
+def _get_existing_columns(conn, table_name: str) -> set:
+    """Return the set of existing column names for a table, works for both SQLite and PostgreSQL."""
+    db_url = str(engine.url)
+    if "sqlite" in db_url:
+        rows = conn.exec_driver_sql(f"PRAGMA table_info({table_name})")
+        return {row[1] for row in rows}
+    else:
+        rows = conn.exec_driver_sql(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = :t",
+            {"t": table_name},
+        )
+        return {row[0] for row in rows}
+
+
 def _ensure_user_profile_columns():
     required_columns = {
         "profile_photo_path": "VARCHAR",
@@ -21,7 +35,7 @@ def _ensure_user_profile_columns():
         "current_hifd_last_activity": "DATE",
     }
     with engine.begin() as conn:
-        existing = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(users)")}
+        existing = _get_existing_columns(conn, "users")
         for column_name, column_type in required_columns.items():
             if column_name not in existing:
                 conn.exec_driver_sql(f"ALTER TABLE users ADD COLUMN {column_name} {column_type}")
@@ -37,7 +51,7 @@ def _ensure_interpretation_review_columns():
         "next_review_at": "DATETIME",
     }
     with engine.begin() as conn:
-        existing = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(interpretations)")}
+        existing = _get_existing_columns(conn, "interpretations")
         for column_name, column_type in required_columns.items():
             if column_name not in existing:
                 conn.exec_driver_sql(f"ALTER TABLE interpretations ADD COLUMN {column_name} {column_type}")
@@ -53,16 +67,16 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Configure CORS for Vercel frontend + localhost development
+# Configure CORS — FRONTEND_URL may be comma-separated for multiple origins
+_frontend_url = os.getenv("FRONTEND_URL", "")
 allowed_origins = [
     "http://localhost:3000",
-    "http://localhost:5173",  # Vite dev
-    os.getenv("FRONTEND_URL", "https://your-vercel-app.vercel.app"),  # Set via env
-]
+    "http://localhost:5173",
+] + [u.strip() for u in _frontend_url.split(",") if u.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=allowed_origins if allowed_origins else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

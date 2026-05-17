@@ -6,15 +6,12 @@ services:
     buildCommand: cd backend && pip install --upgrade pip && pip install -r requirements.txt
     startCommand: cd backend && uvicorn app:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: ANTHROPIC_API_KEY
-        scope: build,runtime
-        value: # Set your Anthropic API key in Render dashboard
       - key: SECRET_KEY
         scope: build,runtime
         value: # Set a secure SECRET_KEY in Render dashboard
       - key: FRONTEND_URL
         scope: build,runtime
-        value: https://your-vercel-app.vercel.app # Update with your Vercel URL
+        value: https://rawdah-quran-hackathon-project-81v3-4s90zqiib.vercel.app
     databases:
       - name: quran_db
         version: 15
