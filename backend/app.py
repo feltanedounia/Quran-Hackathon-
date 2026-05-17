@@ -72,6 +72,8 @@ _ensure_user_qf_columns()
 
 from routes import auth, reading, verses, garden, buddies, milestones, bookmarks
 
+SECRET_KEY = os.getenv("SECRET_KEY")
+
 app = FastAPI(
     title="Bloom — Quran Engagement API",
     description="Backend for the Bloom app: daily Quran reading, 3D garden, buddy matching, and AI-powered tafsir.",
