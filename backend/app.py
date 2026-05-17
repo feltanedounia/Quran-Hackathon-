@@ -13,7 +13,6 @@ Base.metadata.create_all(bind=engine)
 
 
 def _get_existing_columns(conn, table_name: str) -> set:
-    """Return the set of existing column names for a table, works for both SQLite and PostgreSQL."""
     db_url = str(engine.url)
     if "sqlite" in db_url:
         rows = conn.exec_driver_sql(f"PRAGMA table_info({table_name})")
@@ -38,7 +37,9 @@ def _ensure_user_profile_columns():
         existing = _get_existing_columns(conn, "users")
         for column_name, column_type in required_columns.items():
             if column_name not in existing:
-                conn.exec_driver_sql(f"ALTER TABLE users ADD COLUMN {column_name} {column_type}")
+                conn.exec_driver_sql(
+                    f"ALTER TABLE users ADD COLUMN {column_name} {column_type}"
+                )
 
 
 _ensure_user_profile_columns()
@@ -54,23 +55,33 @@ def _ensure_interpretation_review_columns():
         existing = _get_existing_columns(conn, "interpretations")
         for column_name, column_type in required_columns.items():
             if column_name not in existing:
-                conn.exec_driver_sql(f"ALTER TABLE interpretations ADD COLUMN {column_name} {column_type}")
+                conn.exec_driver_sql(
+                    f"ALTER TABLE interpretations ADD COLUMN {column_name} {column_type}"
+                )
 
 
 _ensure_interpretation_review_columns()
 
+
 def _ensure_user_qf_columns():
-    qf_columns = {"qf_access_token": "TEXT", "qf_refresh_token": "TEXT"}
+    qf_columns = {
+        "qf_access_token": "TEXT",
+        "qf_refresh_token": "TEXT",
+    }
     with engine.begin() as conn:
         existing = _get_existing_columns(conn, "users")
         for col, typ in qf_columns.items():
             if col not in existing:
-                conn.exec_driver_sql(f"ALTER TABLE users ADD COLUMN {col} {typ}")
+                conn.exec_driver_sql(
+                    f"ALTER TABLE users ADD COLUMN {col} {typ}"
+                )
 
 
 _ensure_user_qf_columns()
 
+
 from routes import auth, reading, verses, garden, buddies, milestones, bookmarks
+
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 
@@ -80,38 +91,32 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# FIXED CORS 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
-        "https://rawdah-quran-hackathon-proj-git-d60222-dounia-feltanes-projects.vercel.app"
+        "https://rawdah-quran-hackathon-proj-git-d60222-dounia-feltanes-projects.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins if allowed_origins else ["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Serve uploaded accountability photos
+# Serve uploaded files
 uploads_dir = os.path.join(os.path.dirname(__file__), "..", "uploads")
 os.makedirs(uploads_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
-app.include_router(auth.router,       prefix="/api")
-app.include_router(reading.router,    prefix="/api")
-app.include_router(verses.router,     prefix="/api")
-app.include_router(garden.router,     prefix="/api")
-app.include_router(buddies.router,    prefix="/api")
+# Routes
+app.include_router(auth.router, prefix="/api")
+app.include_router(reading.router, prefix="/api")
+app.include_router(verses.router, prefix="/api")
+app.include_router(garden.router, prefix="/api")
+app.include_router(buddies.router, prefix="/api")
 app.include_router(milestones.router, prefix="/api")
-app.include_router(bookmarks.router,  prefix="/api")
+app.include_router(bookmarks.router, prefix="/api")
 
 
 @app.get("/health")
