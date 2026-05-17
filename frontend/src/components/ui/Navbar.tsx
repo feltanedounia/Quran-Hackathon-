@@ -1,11 +1,12 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { TreePine, BookOpen, Star, User, LogOut, Sprout, Compass } from 'lucide-react'
+import { TreePine, BookOpen, Star, User, LogOut, Sprout, Compass, Library } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useQuery } from '@tanstack/react-query'
 import { getMe } from '../../api/auth'
 
 const navLinks = [
   { to: '/dashboard', icon: TreePine, label: 'Garden' },
+  { to: '/quran', icon: Library, label: 'Quran' },
   { to: '/journey', icon: Compass, label: 'Journey' },
   { to: '/reflections', icon: BookOpen, label: 'Reflect' },
   { to: '/milestones', icon: Star, label: 'Milestones' },
