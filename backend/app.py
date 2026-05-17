@@ -80,12 +80,17 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Configure CORS — FRONTEND_URL may be comma-separated for multiple origins
-_frontend_url = os.getenv("FRONTEND_URL", "")
-allowed_origins = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-] + [u.strip() for u in _frontend_url.split(",") if u.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://rawdah-quran-hackathon-proj-git-d60222-dounia-feltanes-projects.vercel.app"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.add_middleware(
     CORSMiddleware,
