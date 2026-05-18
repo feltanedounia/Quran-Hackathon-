@@ -97,7 +97,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
-        "https://rawdah-quran-hackathon-proj-git-d60222-dounia-feltanes-projects.vercel.app",
+        "https://rawdah-quran-hackathon-project-81v3-4aau5ppht.vercel.app/",
     ],
     allow_credentials=True,
     allow_methods=["*"],
