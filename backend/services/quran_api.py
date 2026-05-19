@@ -1,67 +1,62 @@
 import httpx
 import random
+import re
 from typing import Optional
 
-BASE_URL = "https://api.qurancdn.com/api/qdc"
-TRANSLATION_ID = 131   # Dr. Mustafa Khattab (The Clear Quran) — English
+# alquran.cloud — reliable, returns Arabic + English in one request
+ALQURAN_BASE = "https://api.alquran.cloud/v1"
+ARABIC_EDITION = "quran-uthmani"
+ENGLISH_EDITION = "en.sahih"
+
+# qurancdn — kept only for tafsir (still works there)
+QDC_BASE = "https://api.qurancdn.com/api/qdc"
 TAFSIR_ID = 169        # Tafsir Ibn Kathir (English, abridged)
-RECITER_ID = 7         # Mishary Rashid Al-Afasy
+
+SURAH_NAMES = {}  # lazy cache: {surah_number: name}
 
 
-async def get_chapters() -> list[dict]:
+def _strip_html(text: str) -> str:
+    return re.sub(r"<[^>]+>", "", text).strip()
+
+
+async def _get_surah_names() -> dict:
+    global SURAH_NAMES
+    if SURAH_NAMES:
+        return SURAH_NAMES
     async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.get(f"{BASE_URL}/chapters", params={"language": "en"})
+        r = await client.get(f"{ALQURAN_BASE}/surah")
         r.raise_for_status()
-        return r.json().get("chapters", [])
+        for s in r.json().get("data", []):
+            SURAH_NAMES[s["number"]] = s["englishName"]
+    return SURAH_NAMES
 
 
 async def get_random_verse() -> dict:
-    # Pick a random surah (weighted toward shorter ones for daily use)
     surah = random.randint(1, 114)
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with httpx.AsyncClient(timeout=15) as client:
         r = await client.get(
-            f"{BASE_URL}/verses/by_chapter/{surah}",
-            params={
-                "language": "en",
-                "words": "false",
-                "translations": TRANSLATION_ID,
-                "audio": RECITER_ID,
-                "fields": "text_uthmani",
-                "per_page": 50,
-                "page": 1,
-            },
+            f"{ALQURAN_BASE}/surah/{surah}/editions/{ARABIC_EDITION},{ENGLISH_EDITION}"
         )
         r.raise_for_status()
-        data = r.json()
-        verses = data.get("verses", [])
-        if not verses:
-            return await get_random_verse()
+        data = r.json().get("data", [])
 
-        verse = random.choice(verses)
-        translation = ""
-        if verse.get("translations"):
-            translation = verse["translations"][0].get("text", "")
-        # Strip HTML tags from translation
-        translation = _strip_html(translation)
+    arabic_ayahs = data[0]["ayahs"]
+    english_ayahs = data[1]["ayahs"]
+    surah_name = data[0].get("englishName", f"Surah {surah}")
 
-        audio_url = None
-        if verse.get("audio") and verse["audio"].get("recitations"):
-            audio_url = verse["audio"]["recitations"][0].get("audio_url")
+    idx = random.randrange(len(arabic_ayahs))
+    ar = arabic_ayahs[idx]
+    en = english_ayahs[idx]
 
-        chapters = await get_chapters()
-        chapter_name = next(
-            (c["name_simple"] for c in chapters if c["id"] == surah), f"Surah {surah}"
-        )
-
-        return {
-            "verse_key": verse["verse_key"],
-            "surah_number": surah,
-            "ayah_number": verse["verse_number"],
-            "surah_name": chapter_name,
-            "text_arabic": verse.get("text_uthmani", ""),
-            "text_translation": translation,
-            "audio_url": audio_url,
-        }
+    return {
+        "verse_key": f"{surah}:{ar['numberInSurah']}",
+        "surah_number": surah,
+        "ayah_number": ar["numberInSurah"],
+        "surah_name": surah_name,
+        "text_arabic": ar["text"],
+        "text_translation": en["text"],
+        "audio_url": None,
+    }
 
 
 async def get_verse(verse_key: str) -> Optional[dict]:
@@ -72,31 +67,24 @@ async def get_verse(verse_key: str) -> Optional[dict]:
     surah, ayah = parts
     async with httpx.AsyncClient(timeout=10) as client:
         r = await client.get(
-            f"{BASE_URL}/verses/by_key/{verse_key}",
-            params={
-                "language": "en",
-                "translations": TRANSLATION_ID,
-                "fields": "text_uthmani",
-            },
+            f"{ALQURAN_BASE}/ayah/{verse_key}/editions/{ARABIC_EDITION},{ENGLISH_EDITION}"
         )
         if r.status_code != 200:
             return None
-        data = r.json()
-        verse = data.get("verse", {})
-        translation = ""
-        if verse.get("translations"):
-            translation = _strip_html(verse["translations"][0].get("text", ""))
-        return {
-            "verse_key": verse_key,
-            "text_arabic": verse.get("text_uthmani", ""),
-            "text_translation": translation,
-        }
+        editions = r.json().get("data", [])
+    ar = editions[0]
+    en = editions[1]
+    return {
+        "verse_key": verse_key,
+        "text_arabic": ar["text"],
+        "text_translation": en["text"],
+    }
 
 
 async def get_tafsir(verse_key: str) -> str:
-    """Fetch tafsir text for a verse key."""
+    """Fetch tafsir text for a verse key (still uses qurancdn)."""
     async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.get(f"{BASE_URL}/tafsirs/{TAFSIR_ID}/by_ayah/{verse_key}")
+        r = await client.get(f"{QDC_BASE}/tafsirs/{TAFSIR_ID}/by_ayah/{verse_key}")
         if r.status_code != 200:
             return ""
         data = r.json()
@@ -104,6 +92,12 @@ async def get_tafsir(verse_key: str) -> str:
         return _strip_html(tafsir.get("text", ""))
 
 
-def _strip_html(text: str) -> str:
-    import re
-    return re.sub(r"<[^>]+>", "", text).strip()
+async def get_chapters() -> list[dict]:
+    """Return chapter list (name_simple + id) — for compatibility."""
+    async with httpx.AsyncClient(timeout=10) as client:
+        r = await client.get(f"{ALQURAN_BASE}/surah")
+        r.raise_for_status()
+        return [
+            {"id": s["number"], "name_simple": s["englishName"]}
+            for s in r.json().get("data", [])
+        ]
