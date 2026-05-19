@@ -2,35 +2,14 @@ import { Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Flame, BookOpen, Clock, TrendingUp, TrendingDown, Minus, ChevronRight, Volume2 } from 'lucide-react'
+import { Flame, BookOpen, Clock, ChevronRight, Volume2 } from 'lucide-react'
 import { getGardenState } from '../api/garden'
 import { getMe } from '../api/auth'
 import { getDailyVerse } from '../api/verses'
-import { getEngagement } from '../api/reading'
 import GardenScene from '../components/garden/GardenScene'
 import GardenLegend from '../components/garden/GardenLegend'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Navbar from '../components/ui/Navbar'
-
-function EngagementBadge({ level, score }: { level: string; score: number }) {
-  const config = {
-    low: { color: 'bg-garden-100 text-garden-700 border-garden-200', label: 'Engaged', icon: '✨' },
-    medium: { color: 'bg-earth-100 text-earth-700 border-earth-200', label: 'Consistent', icon: '💪' },
-    high: { color: 'bg-red-100 text-red-700 border-red-200', label: 'Needs attention', icon: '🤲' },
-  }[level as 'low' | 'medium' | 'high'] ?? { color: 'bg-gray-100 text-gray-700 border-gray-200', label: level, icon: '📊' }
-
-  return (
-    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${config.color}`}>
-      {config.icon} {config.label}
-    </span>
-  )
-}
-
-function TrendIcon({ trend }: { trend: string }) {
-  if (trend === 'improving') return <TrendingUp className="w-4 h-4 text-garden-600" />
-  if (trend === 'declining') return <TrendingDown className="w-4 h-4 text-red-500" />
-  return <Minus className="w-4 h-4 text-gray-400" />
-}
 
 function GardenLevelBar({ level, levelName }: { level: number; levelName: string }) {
   const max = 7
@@ -60,7 +39,6 @@ export default function DashboardPage() {
   })
   const { data: user } = useQuery({ queryKey: ['me'], queryFn: getMe, staleTime: 60_000 })
   const { data: verse } = useQuery({ queryKey: ['daily-verse'], queryFn: getDailyVerse, staleTime: 24 * 60 * 60_000 })
-  const { data: engagement } = useQuery({ queryKey: ['engagement'], queryFn: getEngagement })
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -68,7 +46,7 @@ export default function DashboardPage() {
       <div className="pt-[60px] md:pb-0 pb-20">
         <div className="flex flex-col lg:flex-row h-[calc(100vh-60px)]">
 
-          {/* 3D Garden — takes up most space */}
+          {/* 3D Garden */}
           <div className="relative flex-1 lg:w-2/3 h-[55vh] lg:h-full bg-sky-100">
             <Suspense fallback={<LoadingSpinner className="h-full" size="lg" />}>
               {gardenLoading ? (
@@ -78,7 +56,6 @@ export default function DashboardPage() {
               )}
             </Suspense>
 
-            {/* Garden overlay - top left: level + plant summary */}
             {garden && (
               <div className="absolute top-4 left-4">
                 <div className="glass rounded-2xl px-4 py-3 shadow-lg max-w-[220px]">
@@ -98,7 +75,6 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Activity mode badges - top right area */}
             <div className="absolute top-4 right-16 flex flex-col gap-1.5">
               <div className="glass rounded-xl px-2.5 py-1.5 text-xs flex items-center gap-1.5 shadow-sm">
                 <span>📖</span><span className="text-gray-600 font-medium">Reading</span><span className="text-garden-600 font-bold">→ 🌷</span>
@@ -114,10 +90,8 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Garden Legend toggle — positioned for the legend component */}
             <GardenLegend gardenState={garden} />
 
-            {/* Begin Journey button */}
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
               <Link
                 to="/journey"
@@ -132,26 +106,19 @@ export default function DashboardPage() {
           {/* Stats sidebar */}
           <div className="lg:w-[360px] w-full bg-white lg:overflow-y-auto border-l border-gray-100 p-5 space-y-4">
 
-            {/* User greeting */}
             {user && (
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="font-display text-lg font-semibold text-gray-800">
-                    As-salamu alaykum, {user.username} 🌙
-                  </h2>
-                  <p className="text-gray-500 text-xs mt-0.5">
-                    {user.last_reading_date
-                      ? `Last session: ${new Date(user.last_reading_date).toLocaleDateString()}`
-                      : 'No sessions yet — start today!'}
-                  </p>
-                </div>
-                {engagement && (
-                  <EngagementBadge level={engagement.risk_level} score={engagement.risk_score} />
-                )}
+              <div>
+                <h2 className="font-display text-lg font-semibold text-gray-800">
+                  As-salamu alaykum, {user.username} 🌙
+                </h2>
+                <p className="text-gray-500 text-xs mt-0.5">
+                  {user.last_reading_date
+                    ? `Last session: ${new Date(user.last_reading_date).toLocaleDateString()}`
+                    : 'No sessions yet — start today!'}
+                </p>
               </div>
             )}
 
-            {/* Stats grid */}
             {user && (
               <div className="grid grid-cols-3 gap-3">
                 <div className="card p-3 text-center">
@@ -180,42 +147,6 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Engagement nudge */}
-            {engagement && engagement.risk_level !== 'low' && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`rounded-2xl p-4 border ${
-                  engagement.risk_level === 'high'
-                    ? 'bg-red-50 border-red-200'
-                    : 'bg-earth-50 border-earth-200'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">{engagement.risk_level === 'high' ? '🤲' : '💚'}</span>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">A gentle reminder</p>
-                    <p className="text-xs text-gray-600 leading-relaxed">{engagement.nudge_message}</p>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Trend */}
-            {engagement && (
-              <div className="card p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendIcon trend={engagement.trend} />
-                  <span className="text-sm font-medium text-gray-700 capitalize">{engagement.trend} trend</span>
-                </div>
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>Avg this week: <strong className="text-gray-700">{engagement.avg_verses_7d} verses/day</strong></span>
-                  <span>{engagement.days_since_last_read}d since last</span>
-                </div>
-              </div>
-            )}
-
-            {/* Daily Verse */}
             {verse && (
               <div className="card p-4">
                 <div className="flex items-center justify-between mb-3">
@@ -225,7 +156,9 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <p className="arabic text-lg text-gray-800 leading-loose mb-3">{verse.text_arabic}</p>
-                <p className="text-xs text-gray-600 leading-relaxed italic">"{verse.text_translation}"</p>
+                {verse.text_translation && (
+                  <p className="text-xs text-gray-600 leading-relaxed italic">"{verse.text_translation}"</p>
+                )}
                 {verse.audio_url && (
                   <a
                     href={verse.audio_url}
@@ -245,7 +178,6 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Quick nav */}
             <div className="grid grid-cols-2 gap-2">
               <Link to="/milestones" className="card p-3 flex items-center gap-2 hover:bg-garden-50 transition-colors">
                 <span className="text-xl">🏆</span>

@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Edit2, Save, X, Flame, BookOpen, Clock, TrendingUp, TrendingDown, Minus, Star, Camera } from 'lucide-react'
+import { Edit2, Save, X, Flame, BookOpen, Clock, Star, Camera, TrendingUp } from 'lucide-react'
 import { getMe, updateMe, uploadPhoto } from '../api/auth'
 import { getGardenState } from '../api/garden'
-import { getEngagement, getSessions } from '../api/reading'
+import { getSessions } from '../api/reading'
 import { getMilestones } from '../api/milestones'
 import Navbar from '../components/ui/Navbar'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
@@ -28,107 +28,6 @@ function StatCard({ icon: Icon, value, label, color }: {
   )
 }
 
-function EngagementProfile({ riskScore, trend, avgVerses7d }: {
-  riskScore: number; trend: string; avgVerses7d: number
-}) {
-  const TrendIcon = trend === 'improving' ? TrendingUp : trend === 'declining' ? TrendingDown : Minus
-  const trendColor = trend === 'improving' ? 'text-garden-600' : trend === 'declining' ? 'text-red-500' : 'text-gray-400'
-
-  const engagementPct = Math.round((1 - riskScore) * 100)
-  const profileLabel =
-    engagementPct >= 80 ? 'Deeply Engaged' :
-    engagementPct >= 60 ? 'Consistently Active' :
-    engagementPct >= 40 ? 'Moderately Engaged' :
-    engagementPct >= 20 ? 'Needs Attention' : 'At Risk'
-
-  const profileColor =
-    engagementPct >= 80 ? 'text-garden-600' :
-    engagementPct >= 60 ? 'text-blue-600' :
-    engagementPct >= 40 ? 'text-earth-600' :
-    engagementPct >= 20 ? 'text-orange-600' : 'text-red-600'
-
-  const ringColor =
-    engagementPct >= 80 ? 'stroke-garden-500' :
-    engagementPct >= 60 ? 'stroke-blue-500' :
-    engagementPct >= 40 ? 'stroke-earth-500' :
-    engagementPct >= 20 ? 'stroke-orange-500' : 'stroke-red-500'
-
-  const radius = 60
-  const circ = 2 * Math.PI * radius
-  const dashOffset = circ - (engagementPct / 100) * circ
-
-  return (
-    <div className="card p-6">
-      <h3 className="font-display text-lg font-bold text-gray-800 mb-5">Spiritual Engagement Profile</h3>
-
-      <div className="flex items-center gap-8">
-        {/* Circular gauge */}
-        <div className="relative flex-shrink-0">
-          <svg width="160" height="160" className="transform -rotate-90">
-            <circle cx="80" cy="80" r={radius} fill="none" stroke="#f3f4f6" strokeWidth="12" />
-            <motion.circle
-              cx="80" cy="80" r={radius}
-              fill="none"
-              strokeWidth="12"
-              strokeDasharray={circ}
-              strokeDashoffset={dashOffset}
-              strokeLinecap="round"
-              className={ringColor}
-              initial={{ strokeDashoffset: circ }}
-              animate={{ strokeDashoffset: dashOffset }}
-              transition={{ duration: 1.2, ease: 'easeOut', delay: 0.3 }}
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-3xl font-bold text-gray-800">{engagementPct}%</span>
-            <span className={`text-xs font-semibold ${profileColor}`}>{profileLabel}</span>
-          </div>
-        </div>
-
-        {/* Metrics */}
-        <div className="flex-1 space-y-3">
-          <div className="flex items-center gap-2">
-            <TrendIcon className={`w-5 h-5 ${trendColor}`} />
-            <span className="text-sm font-medium text-gray-700 capitalize">{trend} trend</span>
-          </div>
-          <div className="space-y-2">
-            <div>
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
-                <span>Reading consistency</span>
-                <span>{engagementPct}%</span>
-              </div>
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${engagementPct}%` }}
-                  transition={{ duration: 1, delay: 0.5 }}
-                  className={`h-full rounded-full ${
-                    engagementPct >= 60 ? 'bg-garden-500' : engagementPct >= 40 ? 'bg-earth-500' : 'bg-red-500'
-                  }`}
-                />
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
-                <span>Avg verses / day (7d)</span>
-                <span>{avgVerses7d}</span>
-              </div>
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min((avgVerses7d / 20) * 100, 100)}%` }}
-                  transition={{ duration: 1, delay: 0.7 }}
-                  className="h-full bg-blue-500 rounded-full"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function ProfilePage() {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState(false)
@@ -145,7 +44,7 @@ export default function ProfilePage() {
   const { data: user, isLoading: userLoading } = useQuery({
     queryKey: ['me'],
     queryFn: getMe,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   })
 
   useEffect(() => {
@@ -156,32 +55,25 @@ export default function ProfilePage() {
     }
   }, [user?.id])
 
-  const { data: garden } = useQuery({ 
-    queryKey: ['garden'], 
+  const { data: garden } = useQuery({
+    queryKey: ['garden'],
     queryFn: getGardenState,
     enabled: !!user,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   })
 
-  const { data: engagement } = useQuery({ 
-    queryKey: ['engagement'], 
-    queryFn: getEngagement,
-    enabled: !!user,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  })
-
-  const { data: milestones = [] } = useQuery({ 
-    queryKey: ['milestones'], 
+  const { data: milestones = [] } = useQuery({
+    queryKey: ['milestones'],
     queryFn: getMilestones,
     enabled: !!user,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   })
 
-  const { data: sessions = [] } = useQuery({ 
-    queryKey: ['sessions'], 
+  const { data: sessions = [] } = useQuery({
+    queryKey: ['sessions'],
     queryFn: () => getSessions(5),
     enabled: !!user,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   })
 
   const { mutate: save, isPending: saving } = useMutation({
@@ -215,7 +107,7 @@ export default function ProfilePage() {
                   <img src={user.profile_photo_path} alt={user.username} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-garden-400 to-garden-700 flex items-center justify-center">
-                    <span className="text-3xl font-bold text-white">{user?.username?.[0].toUpperCase()}</span>
+                    <span className="text-3xl font-bold text-white">{user?.username?.[0]?.toUpperCase()}</span>
                   </div>
                 )}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -260,12 +152,10 @@ export default function ProfilePage() {
             </button>
           </div>
 
-          {/* Member since */}
           <p className="text-xs text-gray-400 mt-3">
             Member since {user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : ''}
           </p>
 
-          {/* Edit form */}
           {editing && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
@@ -312,7 +202,6 @@ export default function ProfilePage() {
             </motion.div>
           )}
 
-          {/* Bio display */}
           {!editing && user?.bio && (
             <p className="text-sm text-gray-600 mt-3 italic">"{user.bio}"</p>
           )}
@@ -331,15 +220,6 @@ export default function ProfilePage() {
           <StatCard icon={BookOpen} value={user?.total_verses_read ?? 0} label="Total verses read" color="bg-garden-100 text-garden-600" />
           <StatCard icon={Clock} value={`${hours}h`} label="Total reading time" color="bg-blue-100 text-blue-600" />
         </div>
-
-        {/* Engagement Profile */}
-        {engagement && (
-          <EngagementProfile
-            riskScore={engagement.risk_score}
-            trend={engagement.trend}
-            avgVerses7d={engagement.avg_verses_7d}
-          />
-        )}
 
         {/* Milestones summary */}
         <div className="card p-5">
