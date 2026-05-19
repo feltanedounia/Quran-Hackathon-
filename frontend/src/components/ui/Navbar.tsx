@@ -3,6 +3,7 @@ import { TreePine, BookOpen, Star, User, LogOut, Sprout, Compass, Library } from
 import { useAuthStore } from '../../store/authStore'
 import { useQuery } from '@tanstack/react-query'
 import { getMe } from '../../api/auth'
+import { resolveMediaUrl } from '../../utils/media'
 
 const navLinks = [
   { to: '/dashboard', icon: TreePine, label: 'Garden' },
@@ -63,7 +64,7 @@ export default function Navbar() {
             <div className="hidden sm:flex items-center gap-2 text-sm text-gray-600">
               {user.profile_photo_path ? (
                 <img
-                  src={user.profile_photo_path}
+                  src={resolveMediaUrl(user.profile_photo_path)}
                   alt={user.username}
                   className="w-7 h-7 rounded-full object-cover border border-garden-200"
                 />

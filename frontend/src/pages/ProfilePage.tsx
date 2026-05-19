@@ -8,6 +8,7 @@ import { getSessions } from '../api/reading'
 import { getMilestones } from '../api/milestones'
 import Navbar from '../components/ui/Navbar'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
+import { resolveMediaUrl } from '../utils/media'
 
 function StatCard({ icon: Icon, value, label, color }: {
   icon: React.ComponentType<{ className?: string }>
@@ -104,7 +105,7 @@ export default function ProfilePage() {
                 title="Change profile picture"
               >
                 {user?.profile_photo_path ? (
-                  <img src={user.profile_photo_path} alt={user.username} className="w-full h-full object-cover" />
+                  <img src={resolveMediaUrl(user.profile_photo_path)} alt={user.username} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-garden-400 to-garden-700 flex items-center justify-center">
                     <span className="text-3xl font-bold text-white">{user?.username?.[0]?.toUpperCase()}</span>
