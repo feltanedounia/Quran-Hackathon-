@@ -83,6 +83,7 @@ export default function SessionPage() {
   const [ayahStart, setAyahStart] = useState('')
   const [ayahEnd, setAyahEnd] = useState('')
   const [milestone, setMilestone] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   // Inline Quran reader state
   const [selectedSurah, setSelectedSurah] = useState<Surah | null>(null)
@@ -137,6 +138,7 @@ export default function SessionPage() {
   const { mutate: saveSession, isPending: saving } = useMutation({
     mutationFn: logSession,
     onSuccess: (data) => {
+      setSaveError(null)
       queryClient.invalidateQueries({ queryKey: ['garden'] })
       queryClient.invalidateQueries({ queryKey: ['me'] })
       queryClient.invalidateQueries({ queryKey: ['engagement'] })
@@ -144,6 +146,13 @@ export default function SessionPage() {
 
       if (data.verses_read >= 100) setMilestone('100 verses reached! 🌸')
       setStep('done')
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
+        (err as Error)?.message ??
+        'Something went wrong. Please try again.'
+      setSaveError(msg)
     },
   })
 
@@ -492,6 +501,12 @@ export default function SessionPage() {
                     onChange={(e) => setNotes(e.target.value)}
                   />
                 </div>
+
+                {saveError && (
+                  <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl p-3">
+                    {saveError}
+                  </div>
+                )}
 
                 <button
                   onClick={handleSave}

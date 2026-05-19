@@ -6,12 +6,18 @@ services:
     buildCommand: cd backend && pip install --upgrade pip && pip install -r requirements.txt
     startCommand: cd backend && uvicorn app:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: quran_db
+          property: connectionString
       - key: SECRET_KEY
         scope: build,runtime
         value: # Set a secure SECRET_KEY in Render dashboard
       - key: FRONTEND_URL
         scope: build,runtime
-        value: https://rawdah-quran-hackathon-project-81v3-4s90zqiib.vercel.app
-    databases:
-      - name: quran_db
-        version: 15
+        value: https://rawdah-quran-hackathon-project-81v3.vercel.app
+
+databases:
+  - name: quran_db
+    databaseName: quran_db
+    plan: free
