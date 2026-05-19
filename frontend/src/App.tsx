@@ -10,7 +10,6 @@ import ReflectionsPage from './pages/ReflectionsPage'
 import MilestonesPage from './pages/MilestonesPage'
 import ProfilePage from './pages/ProfilePage'
 import QuranPage from './pages/QuranPage'
-import AdminPage from './pages/AdminPage'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 60_000, retry: 1 } },
@@ -40,7 +39,6 @@ export default function App() {
           <Route path="/milestones" element={<Private><MilestonesPage /></Private>} />
           <Route path="/profile" element={<Private><ProfilePage /></Private>} />
           <Route path="/quran" element={<Private><QuranPage /></Private>} />
-          <Route path="/admin" element={<Private><AdminPage /></Private>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Edit2, Save, X, Flame, BookOpen, Clock, TrendingUp, TrendingDown, Minus, Star } from 'lucide-react'
-import { getMe, updateMe } from '../api/auth'
+import { Edit2, Save, X, Flame, BookOpen, Clock, TrendingUp, TrendingDown, Minus, Star, Camera } from 'lucide-react'
+import { getMe, updateMe, uploadPhoto } from '../api/auth'
 import { getGardenState } from '../api/garden'
 import { getEngagement, getSessions } from '../api/reading'
 import { getMilestones } from '../api/milestones'
@@ -135,6 +135,12 @@ export default function ProfilePage() {
   const [bio, setBio] = useState('')
   const [country, setCountry] = useState('')
   const [hifd, setHifd] = useState('')
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
+  const { mutate: changePhoto, isPending: uploadingPhoto } = useMutation({
+    mutationFn: (file: File) => uploadPhoto(file),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['me'] }),
+  })
 
   const { data: user, isLoading: userLoading } = useQuery({
     queryKey: ['me'],
@@ -175,11 +181,38 @@ export default function ProfilePage() {
         <div className="card p-6">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-garden-400 to-garden-700 flex items-center justify-center shadow-lg">
-                <span className="text-3xl font-bold text-white">
-                  {user?.username?.[0].toUpperCase()}
-                </span>
-              </div>
+              <button
+                onClick={() => photoInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="relative w-16 h-16 rounded-2xl overflow-hidden shadow-lg group focus:outline-none"
+                title="Change profile picture"
+              >
+                {user?.profile_photo_path ? (
+                  <img src={user.profile_photo_path} alt={user.username} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-garden-400 to-garden-700 flex items-center justify-center">
+                    <span className="text-3xl font-bold text-white">{user?.username?.[0].toUpperCase()}</span>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  {uploadingPhoto ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Camera className="w-5 h-5 text-white" />
+                  )}
+                </div>
+              </button>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) changePhoto(file)
+                  e.target.value = ''
+                }}
+              />
               <div>
                 <h1 className="font-display text-2xl font-bold text-gray-900">{user?.username}</h1>
                 <p className="text-sm text-gray-500">{user?.email}</p>

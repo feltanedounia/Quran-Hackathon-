@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { TreePine, BookOpen, Star, User, LogOut, Sprout, Compass, Library, BarChart2 } from 'lucide-react'
+import { TreePine, BookOpen, Star, User, LogOut, Sprout, Compass, Library } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useQuery } from '@tanstack/react-query'
 import { getMe } from '../../api/auth'
@@ -11,7 +11,6 @@ const navLinks = [
   { to: '/reflections', icon: BookOpen, label: 'Reflect' },
   { to: '/milestones', icon: Star, label: 'Milestones' },
   { to: '/profile', icon: User, label: 'Profile' },
-  { to: '/admin', icon: BarChart2, label: 'Analytics' },
 ]
 
 export default function Navbar() {
@@ -62,9 +61,17 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           {user && (
             <div className="hidden sm:flex items-center gap-2 text-sm text-gray-600">
-              <div className="w-7 h-7 rounded-full bg-garden-200 flex items-center justify-center text-garden-700 font-semibold text-xs">
-                {user.username[0].toUpperCase()}
-              </div>
+              {user.profile_photo_path ? (
+                <img
+                  src={user.profile_photo_path}
+                  alt={user.username}
+                  className="w-7 h-7 rounded-full object-cover border border-garden-200"
+                />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-garden-200 flex items-center justify-center text-garden-700 font-semibold text-xs">
+                  {user.username[0].toUpperCase()}
+                </div>
+              )}
               <span className="font-medium">{user.username}</span>
               <span className="text-earth-600 font-bold">🔥 {user.streak_count}</span>
             </div>

@@ -1,10 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { BookOpen, Search, ChevronRight, Bookmark, Volume2, ChevronLeft, Loader2, ListOrdered, Hash } from 'lucide-react'
+import {
+  BookOpen, Search, ChevronRight, Bookmark, Volume2, ChevronLeft,
+  Loader2, ListOrdered, Hash, Menu, Play, Pause, X, Clock, CheckCircle2,
+  Trash2,
+} from 'lucide-react'
 import Navbar from '../components/ui/Navbar'
-import { addBookmark, listBookmarks } from '../api/bookmarks'
-import { getSessions } from '../api/reading'
+import { addBookmark, listBookmarks, deleteBookmark } from '../api/bookmarks'
+import type { Bookmark as BookmarkType } from '../api/bookmarks'
+import { getSessions, logSession } from '../api/reading'
 import { trackEvent } from '../api/analytics'
 
 interface Surah {
@@ -24,19 +30,8 @@ interface Ayah {
   audio?: string
 }
 
-interface JuzzInfo {
-  number: number
-  arabicName: string
-  startSurah: number
-  startAyah: number
-}
-
-interface HizbInfo {
-  number: number
-  juzz: number
-  startSurah: number
-  startAyah: number
-}
+interface JuzzInfo { number: number; arabicName: string; startSurah: number; startAyah: number }
+interface HizbInfo { number: number; juzz: number; startSurah: number; startAyah: number }
 
 const JUZZ: JuzzInfo[] = [
   { number: 1,  arabicName: 'الم',              startSurah: 1,  startAyah: 1 },
@@ -71,7 +66,6 @@ const JUZZ: JuzzInfo[] = [
   { number: 30, arabicName: 'عم',               startSurah: 78, startAyah: 1 },
 ]
 
-// Precise hizb divisions per standard mushaf
 const HIZB: HizbInfo[] = [
   { number: 1,  juzz: 1,  startSurah: 1,  startAyah: 1 },
   { number: 2,  juzz: 1,  startSurah: 2,  startAyah: 75 },
@@ -156,10 +150,20 @@ const fetchSurah = async (number: number): Promise<Ayah[]> => {
   }))
 }
 
-type NavMode = 'surah' | 'juzz' | 'hizb'
+type NavMode = 'surah' | 'juzz' | 'hizb' | 'bookmarks'
+
+function formatTime(seconds: number) {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
 
 export default function QuranPage() {
   const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+
   const [selectedSurah, setSelectedSurah] = useState<Surah | null>(null)
   const [search, setSearch] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -167,6 +171,25 @@ export default function QuranPage() {
   const [playingAyah, setPlayingAyah] = useState<number | null>(null)
   const [navMode, setNavMode] = useState<NavMode>('surah')
   const [scrollToAyah, setScrollToAyah] = useState<number | null>(null)
+
+  // Go-to-ayah input
+  const [gotoValue, setGotoValue] = useState('')
+
+  // Auto-scroll
+  const [autoScroll, setAutoScroll] = useState(false)
+  const [scrollSpeed, setScrollSpeed] = useState(2) // px per tick
+  const autoScrollRef = useRef<number | null>(null)
+
+  // Session timer (from ?session= param)
+  const sessionType = searchParams.get('session')
+  const sessionStart = searchParams.get('start')
+  const [timerSeconds, setTimerSeconds] = useState(0)
+  const [timerCollapsed, setTimerCollapsed] = useState(false)
+  const [sessionDone, setSessionDone] = useState(false)
+  const [versesRead, setVersesRead] = useState('')
+  const [sessionSaved, setSessionSaved] = useState(false)
+  const timerIntervalRef = useRef<number | null>(null)
+
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const readerRef = useRef<HTMLDivElement>(null)
   const ayahRefs = useRef<Record<number, HTMLDivElement | null>>({})
@@ -206,14 +229,57 @@ export default function QuranPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookmarks'] }),
   })
 
+  const { mutate: removeBookmark } = useMutation({
+    mutationFn: (id: number) => deleteBookmark(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookmarks'] }),
+  })
+
+  const { mutate: saveSession, isPending: savingSession } = useMutation({
+    mutationFn: logSession,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['garden'] })
+      queryClient.invalidateQueries({ queryKey: ['me'] })
+      setSessionSaved(true)
+      // Clear session params from URL
+      setSearchParams({})
+    },
+  })
+
+  // Timer: start/resume from ?start= param
+  useEffect(() => {
+    if (!sessionType || !sessionStart) return
+    const elapsed = Math.floor((Date.now() - Number(sessionStart)) / 1000)
+    setTimerSeconds(elapsed > 0 ? elapsed : 0)
+
+    timerIntervalRef.current = window.setInterval(() => {
+      setTimerSeconds(s => s + 1)
+    }, 1000)
+
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+    }
+  }, [sessionType, sessionStart])
+
+  // Auto-scroll logic
+  useEffect(() => {
+    if (autoScroll && readerRef.current) {
+      autoScrollRef.current = window.setInterval(() => {
+        readerRef.current?.scrollBy({ top: scrollSpeed, behavior: 'auto' })
+      }, 50)
+    } else {
+      if (autoScrollRef.current) clearInterval(autoScrollRef.current)
+    }
+    return () => {
+      if (autoScrollRef.current) clearInterval(autoScrollRef.current)
+    }
+  }, [autoScroll, scrollSpeed])
+
   // Scroll to target ayah after ayahs load
   useEffect(() => {
     if (!ayahsLoading && scrollToAyah !== null && ayahs.length > 0) {
       setTimeout(() => {
         const el = ayahRefs.current[scrollToAyah]
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
         setScrollToAyah(null)
       }, 100)
     }
@@ -229,6 +295,9 @@ export default function QuranPage() {
   const isBookmarked = (ayah: Ayah) =>
     bookmarks.some((b) => b.verse_key === `${selectedSurah?.number}:${ayah.numberInSurah}`)
 
+  const getBookmarkForAyah = (ayah: Ayah): BookmarkType | undefined =>
+    bookmarks.find((b) => b.verse_key === `${selectedSurah?.number}:${ayah.numberInSurah}`)
+
   const handleSelectSurah = useCallback((surah: Surah, targetAyah?: number) => {
     setSelectedSurah(surah)
     setSidebarOpen(false)
@@ -236,6 +305,8 @@ export default function QuranPage() {
     setPlayingAyah(null)
     audioRef.current?.pause()
     ayahRefs.current = {}
+    setGotoValue('')
+    setAutoScroll(false)
     if (targetAyah && targetAyah > 1) {
       setScrollToAyah(targetAyah)
     } else {
@@ -263,9 +334,20 @@ export default function QuranPage() {
   const handleContinueKhatma = () => {
     if (!lastSession) return
     const surah = surahs.find(s => s.number === lastSession.surah_number)
-    if (surah) {
-      handleSelectSurah(surah, lastSession.ayah_end ?? lastSession.ayah_start ?? 1)
-    }
+    if (surah) handleSelectSurah(surah, lastSession.ayah_end ?? lastSession.ayah_start ?? 1)
+  }
+
+  const handleGotoAyah = () => {
+    const num = parseInt(gotoValue)
+    if (!selectedSurah || isNaN(num) || num < 1 || num > selectedSurah.numberOfAyahs) return
+    const el = ayahRefs.current[num]
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setGotoValue('')
+  }
+
+  const handleBookmarkFromList = (b: BookmarkType) => {
+    const surah = surahs.find(s => s.number === b.surah_number)
+    if (surah) handleSelectSurah(surah, b.ayah_number)
   }
 
   const playAudio = (ayah: Ayah) => {
@@ -274,9 +356,7 @@ export default function QuranPage() {
       setPlayingAyah(null)
       return
     }
-    if (audioRef.current) {
-      audioRef.current.pause()
-    }
+    audioRef.current?.pause()
     const audio = new Audio(ayah.audio)
     audioRef.current = audio
     audio.play()
@@ -285,23 +365,40 @@ export default function QuranPage() {
     trackEvent('audio_play', { surah: selectedSurah?.number, ayah: ayah.numberInSurah })
   }
 
+  const handleEndSession = () => {
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+    setSessionDone(true)
+  }
+
+  const handleSaveSession = () => {
+    saveSession({
+      verses_read: parseInt(versesRead) || 1,
+      minutes_spent: Math.round(timerSeconds / 60 * 10) / 10,
+      surah_number: selectedSurah?.number,
+      notes: undefined,
+    })
+  }
+
   useEffect(() => {
     return () => {
       audioRef.current?.pause()
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+      if (autoScrollRef.current) clearInterval(autoScrollRef.current)
     }
   }, [])
 
   const navTabs: { id: NavMode; label: string; icon: React.ReactNode }[] = [
-    { id: 'surah', label: 'Surah', icon: <BookOpen className="w-3.5 h-3.5" /> },
-    { id: 'juzz',  label: 'Juzz',  icon: <ListOrdered className="w-3.5 h-3.5" /> },
-    { id: 'hizb',  label: 'Hizb',  icon: <Hash className="w-3.5 h-3.5" /> },
+    { id: 'surah',     label: 'Surah',     icon: <BookOpen className="w-3.5 h-3.5" /> },
+    { id: 'juzz',      label: 'Juzz',      icon: <ListOrdered className="w-3.5 h-3.5" /> },
+    { id: 'hizb',      label: 'Hizb',      icon: <Hash className="w-3.5 h-3.5" /> },
+    { id: 'bookmarks', label: 'Saved',     icon: <Bookmark className="w-3.5 h-3.5" /> },
   ]
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <div className="pt-[60px] h-screen flex flex-col">
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden relative">
 
           {/* Sidebar */}
           <AnimatePresence initial={false}>
@@ -324,7 +421,7 @@ export default function QuranPage() {
                     {selectedSurah && (
                       <button
                         onClick={() => setSidebarOpen(false)}
-                        className="md:hidden p-1 text-gray-400 hover:text-gray-600"
+                        className="p-1 text-gray-400 hover:text-gray-600"
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
@@ -344,7 +441,7 @@ export default function QuranPage() {
                         }`}
                       >
                         {tab.icon}
-                        {tab.label}
+                        <span className="hidden sm:inline">{tab.label}</span>
                       </button>
                     ))}
                   </div>
@@ -380,6 +477,7 @@ export default function QuranPage() {
 
                 {/* List */}
                 <div className="flex-1 overflow-y-auto mt-1">
+
                   {navMode === 'surah' && (
                     surahsLoading ? (
                       <div className="flex items-center justify-center h-32">
@@ -465,13 +563,72 @@ export default function QuranPage() {
                       ))}
                     </div>
                   )}
+
+                  {navMode === 'bookmarks' && (
+                    <div>
+                      <p className="px-4 py-2 text-xs text-gray-400">
+                        {bookmarks.length} saved · tap to jump
+                      </p>
+                      {bookmarks.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                          <Bookmark className="w-8 h-8 text-gray-200 mb-2" />
+                          <p className="text-sm text-gray-400">No bookmarks yet</p>
+                          <p className="text-xs text-gray-300 mt-1">Tap the bookmark icon on any ayah</p>
+                        </div>
+                      ) : (
+                        bookmarks.map((b) => (
+                          <div
+                            key={b.id}
+                            className="flex items-start gap-2 px-4 py-3 border-b border-gray-50 hover:bg-garden-50 transition-colors"
+                          >
+                            <button
+                              onClick={() => handleBookmarkFromList(b)}
+                              className="flex-1 text-left min-w-0"
+                            >
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <span className="text-xs font-semibold text-garden-700">
+                                  {b.surah_name ?? `Surah ${b.surah_number}`} · {b.ayah_number}
+                                </span>
+                              </div>
+                              {b.verse_text && (
+                                <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{b.verse_text}</p>
+                              )}
+                              <p className="text-xs text-gray-300 mt-1">
+                                {new Date(b.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </p>
+                            </button>
+                            <button
+                              onClick={() => removeBookmark(b.id)}
+                              className="p-1 text-gray-300 hover:text-red-400 transition-colors flex-shrink-0 mt-0.5"
+                              title="Remove bookmark"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
                 </div>
               </motion.aside>
             )}
           </AnimatePresence>
 
           {/* Reader Area */}
-          <div ref={readerRef} className="flex-1 overflow-y-auto">
+          <div ref={readerRef} className="flex-1 overflow-y-auto relative">
+
+            {/* Persistent sidebar toggle button */}
+            {selectedSurah && !sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="fixed left-0 top-1/2 -translate-y-1/2 z-20 bg-white border border-gray-200 border-l-0 rounded-r-xl p-2 shadow-md text-gray-500 hover:text-garden-600 hover:bg-garden-50 transition-colors"
+                title="Open surah panel"
+              >
+                <Menu className="w-4 h-4" />
+              </button>
+            )}
+
             {!selectedSurah ? (
               <div className="flex flex-col items-center justify-center h-full text-center px-4">
                 <div className="text-6xl mb-4">📖</div>
@@ -491,12 +648,13 @@ export default function QuranPage() {
               <div className="max-w-3xl mx-auto px-4 py-8 pb-24">
 
                 {/* Surah Header */}
-                <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center gap-3 mb-4">
                   <button
                     onClick={() => setSidebarOpen(true)}
-                    className="md:hidden p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+                    title="Change surah"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <Menu className="w-4 h-4" />
                   </button>
                   <div className="flex-1 bg-gradient-to-r from-garden-600 to-garden-800 rounded-2xl p-5 text-white shadow-lg">
                     <div className="flex items-start justify-between">
@@ -530,7 +688,7 @@ export default function QuranPage() {
                   </div>
 
                   {/* Prev/Next Surah */}
-                  <div className="hidden md:flex flex-col gap-1">
+                  <div className="flex flex-col gap-1">
                     {selectedSurah.number > 1 && (
                       <button
                         onClick={() => handleSelectSurah(surahs[selectedSurah.number - 2])}
@@ -551,6 +709,63 @@ export default function QuranPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Toolbar: go-to-ayah + auto-scroll */}
+                {!ayahsLoading && ayahs.length > 0 && (
+                  <div className="flex items-center gap-2 mb-5 flex-wrap">
+                    {/* Go to ayah */}
+                    <form
+                      onSubmit={(e) => { e.preventDefault(); handleGotoAyah() }}
+                      className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl px-3 py-1.5 shadow-sm"
+                    >
+                      <Hash className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                      <input
+                        type="number"
+                        min={1}
+                        max={selectedSurah.numberOfAyahs}
+                        placeholder={`Ayah 1–${selectedSurah.numberOfAyahs}`}
+                        value={gotoValue}
+                        onChange={(e) => setGotoValue(e.target.value)}
+                        className="w-28 text-sm bg-transparent outline-none text-gray-700 placeholder-gray-300"
+                      />
+                      <button
+                        type="submit"
+                        className="text-xs font-semibold text-garden-600 hover:text-garden-800 px-1"
+                      >
+                        Go
+                      </button>
+                    </form>
+
+                    {/* Auto-scroll toggle */}
+                    <button
+                      onClick={() => setAutoScroll(a => !a)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                        autoScroll
+                          ? 'bg-garden-600 text-white border-garden-600'
+                          : 'bg-white text-gray-500 border-gray-200 hover:border-garden-300'
+                      }`}
+                    >
+                      {autoScroll ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                      Auto-scroll
+                    </button>
+
+                    {/* Speed slider — only when auto-scroll is on */}
+                    {autoScroll && (
+                      <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-1.5 shadow-sm">
+                        <span className="text-xs text-gray-400">Speed</span>
+                        <input
+                          type="range"
+                          min={1}
+                          max={8}
+                          value={scrollSpeed}
+                          onChange={(e) => setScrollSpeed(Number(e.target.value))}
+                          className="w-20 accent-garden-600"
+                        />
+                        <span className="text-xs font-semibold text-garden-700">{scrollSpeed}x</span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Bismillah */}
                 {selectedSurah.number !== 1 && selectedSurah.number !== 9 && (
@@ -583,27 +798,30 @@ export default function QuranPage() {
                           <div className="w-8 h-8 rounded-full bg-garden-100 flex items-center justify-center flex-shrink-0 mt-1">
                             <span className="text-xs font-bold text-garden-700">{ayah.numberInSurah}</span>
                           </div>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                          <div className="flex items-center gap-1 flex-shrink-0">
                             <button
                               onClick={() => playAudio(ayah)}
                               className={`p-1.5 rounded-lg transition-colors ${
                                 playingAyah === ayah.numberInSurah
                                   ? 'text-garden-600 bg-garden-100'
-                                  : 'text-gray-400 hover:text-garden-600 hover:bg-garden-50'
+                                  : 'text-gray-300 hover:text-garden-600 hover:bg-garden-50'
                               }`}
                               title="Listen"
                             >
                               <Volume2 className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => !isBookmarked(ayah) && bookmark(ayah)}
-                              disabled={isBookmarked(ayah)}
+                              onClick={() => {
+                                const existing = getBookmarkForAyah(ayah)
+                                if (existing) removeBookmark(existing.id)
+                                else bookmark(ayah)
+                              }}
                               className={`p-1.5 rounded-lg transition-colors ${
                                 isBookmarked(ayah)
                                   ? 'text-garden-600 bg-garden-100'
-                                  : 'text-gray-400 hover:text-garden-600 hover:bg-garden-50'
+                                  : 'text-gray-300 hover:text-garden-600 hover:bg-garden-50'
                               }`}
-                              title={isBookmarked(ayah) ? 'Bookmarked' : 'Bookmark'}
+                              title={isBookmarked(ayah) ? 'Remove bookmark' : 'Bookmark'}
                             >
                               <Bookmark className={`w-4 h-4 ${isBookmarked(ayah) ? 'fill-garden-600' : ''}`} />
                             </button>
@@ -639,6 +857,100 @@ export default function QuranPage() {
               </div>
             )}
           </div>
+
+          {/* Session timer panel (only when ?session= is in URL) */}
+          {sessionType && !sessionSaved && (
+            <AnimatePresence>
+              <motion.div
+                initial={{ x: 320, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 320, opacity: 0 }}
+                transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+                className="w-64 bg-white border-l border-gray-100 flex flex-col z-10 h-full shadow-xl flex-shrink-0"
+              >
+                {/* Timer header */}
+                <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                    <Clock className="w-4 h-4 text-garden-600" />
+                    <span className="capitalize">{sessionType} session</span>
+                  </div>
+                  <button
+                    onClick={() => setTimerCollapsed(c => !c)}
+                    className="p-1 text-gray-400 hover:text-gray-600"
+                    title={timerCollapsed ? 'Expand' : 'Collapse'}
+                  >
+                    {timerCollapsed ? <ChevronLeft className="w-4 h-4 rotate-180" /> : <X className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                {!timerCollapsed && (
+                  <div className="flex-1 p-4 flex flex-col gap-4">
+                    {/* Timer display */}
+                    <div className="text-center py-6">
+                      <div className="text-4xl font-mono font-bold text-garden-700 tabular-nums">
+                        {formatTime(timerSeconds)}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {sessionDone ? 'Session ended' : 'Session running'}
+                      </p>
+                    </div>
+
+                    {!sessionDone ? (
+                      <button
+                        onClick={handleEndSession}
+                        className="w-full py-2.5 bg-garden-600 hover:bg-garden-700 text-white text-sm font-semibold rounded-xl transition-colors"
+                      >
+                        End Session
+                      </button>
+                    ) : (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 block mb-1">Verses read</label>
+                          <input
+                            type="number"
+                            min={1}
+                            value={versesRead}
+                            onChange={(e) => setVersesRead(e.target.value)}
+                            placeholder="e.g. 20"
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-garden-300"
+                          />
+                        </div>
+                        <button
+                          onClick={handleSaveSession}
+                          disabled={savingSession}
+                          className="w-full py-2.5 bg-garden-600 hover:bg-garden-700 text-white text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          {savingSession ? 'Saving...' : 'Save Session'}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Current surah info */}
+                    {selectedSurah && (
+                      <div className="mt-auto bg-garden-50 rounded-xl p-3">
+                        <p className="text-xs text-garden-600 font-semibold">Reading</p>
+                        <p className="text-sm font-medium text-garden-800">{selectedSurah.englishName}</p>
+                        <p className="text-xs text-garden-600">{selectedSurah.numberOfAyahs} verses</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Collapsed state: just show time */}
+                {timerCollapsed && (
+                  <button
+                    onClick={() => setTimerCollapsed(false)}
+                    className="flex-1 flex flex-col items-center justify-center gap-1 text-garden-700 hover:bg-garden-50 transition-colors"
+                  >
+                    <Clock className="w-5 h-5" />
+                    <span className="font-mono font-bold text-lg tabular-nums">{formatTime(timerSeconds)}</span>
+                  </button>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          )}
+
         </div>
       </div>
     </div>

@@ -228,12 +228,8 @@ export default function SessionPage() {
               {/* Mode toggle */}
               <div className="flex gap-2 mb-4">
                 <button
-                  onClick={() => setReadMode('inapp')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-                    readMode === 'inapp'
-                      ? 'bg-garden-600 text-white border-garden-600 shadow-md'
-                      : 'bg-white text-gray-500 border-gray-200 hover:border-garden-300'
-                  }`}
+                  onClick={() => navigate(`/quran?session=${activityType}&start=${Date.now()}`)}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition-all bg-white text-gray-500 border-gray-200 hover:border-garden-300 hover:bg-garden-50"
                 >
                   <BookOpen className="w-4 h-4" />
                   Read in-app
