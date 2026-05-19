@@ -145,6 +145,7 @@ export default function ProfilePage() {
   const { data: user, isLoading: userLoading } = useQuery({
     queryKey: ['me'],
     queryFn: getMe,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   })
 
   useEffect(() => {
@@ -155,10 +156,33 @@ export default function ProfilePage() {
     }
   }, [user?.id])
 
-  const { data: garden } = useQuery({ queryKey: ['garden'], queryFn: getGardenState })
-  const { data: engagement } = useQuery({ queryKey: ['engagement'], queryFn: getEngagement })
-  const { data: milestones = [] } = useQuery({ queryKey: ['milestones'], queryFn: getMilestones })
-  const { data: sessions = [] } = useQuery({ queryKey: ['sessions'], queryFn: () => getSessions(7) })
+  const { data: garden } = useQuery({ 
+    queryKey: ['garden'], 
+    queryFn: getGardenState,
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+
+  const { data: engagement } = useQuery({ 
+    queryKey: ['engagement'], 
+    queryFn: getEngagement,
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+
+  const { data: milestones = [] } = useQuery({ 
+    queryKey: ['milestones'], 
+    queryFn: getMilestones,
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+
+  const { data: sessions = [] } = useQuery({ 
+    queryKey: ['sessions'], 
+    queryFn: () => getSessions(5),
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
 
   const { mutate: save, isPending: saving } = useMutation({
     mutationFn: () => updateMe({ bio, country, current_hifd: hifd }),

@@ -64,8 +64,8 @@ class GroupMember(Base):
     __tablename__ = "group_members"
 
     id = Column(Integer, primary_key=True, index=True)
-    group_id = Column(Integer, ForeignKey("groups.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     joined_at = Column(DateTime, default=datetime.utcnow)
     is_admin = Column(Boolean, default=False)
 
@@ -134,8 +134,8 @@ class ReadingSession(Base):
     __tablename__ = "reading_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    date = Column(Date, default=date.today, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    date = Column(Date, default=date.today, nullable=False, index=True)
     verses_read = Column(Integer, default=0)
     minutes_spent = Column(Float, default=0.0)
     surah_number = Column(Integer, nullable=True)
@@ -152,7 +152,7 @@ class Interpretation(Base):
     __tablename__ = "interpretations"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     verse_key = Column(String, nullable=False)  # e.g. "2:255"
     verse_text = Column(Text, nullable=False)
     user_interpretation = Column(Text, nullable=False)
@@ -170,8 +170,8 @@ class BuddyPair(Base):
     __tablename__ = "buddy_pairs"
 
     id = Column(Integer, primary_key=True, index=True)
-    requester_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    recipient_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    requester_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    recipient_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     status = Column(Enum(BuddyStatus), default=BuddyStatus.pending)
     created_at = Column(DateTime, default=datetime.utcnow)
     matched_at = Column(DateTime, nullable=True)
@@ -185,8 +185,8 @@ class BuddyMessage(Base):
     __tablename__ = "buddy_messages"
 
     id = Column(Integer, primary_key=True, index=True)
-    pair_id = Column(Integer, ForeignKey("buddy_pairs.id"), nullable=False)
-    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    pair_id = Column(Integer, ForeignKey("buddy_pairs.id"), nullable=False, index=True)
+    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     content = Column(Text, nullable=False)
     milestone_type = Column(Enum(MilestoneType), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -212,7 +212,7 @@ class Milestone(Base):
     __tablename__ = "milestones"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     milestone_type = Column(Enum(MilestoneType), nullable=False)
     achieved_at = Column(DateTime, default=datetime.utcnow)
     shared_with_buddy = Column(Boolean, default=False)
@@ -225,7 +225,7 @@ class Bookmark(Base):
     __tablename__ = "bookmarks"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     verse_key = Column(String, nullable=False)        # e.g. "2:255"
     surah_number = Column(Integer, nullable=False)
     ayah_number = Column(Integer, nullable=False)
