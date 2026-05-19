@@ -82,7 +82,7 @@ QF_CLIENT_SECRET=<your registered QF client secret>
 
 ## Live Demo
 
-- **Frontend:** https://rawdah-quran-hackathon-project-81v3-4s90zqiib.vercel.app
+- **Frontend:** https://rawdah-quran-hackathon-project-81v3.vercel.app/
 - **Backend API:** https://rawdah-quran-hackathon-project-7.onrender.com
 - **API Docs:** https://rawdah-quran-hackathon-project-7.onrender.com/docs
 
