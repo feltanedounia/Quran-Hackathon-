@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { TreePine, BookOpen, Star, User, LogOut, Sprout, Compass, Library } from 'lucide-react'
+import { TreePine, BookOpen, Star, User, LogOut, Sprout, Compass, Library, BarChart2 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useQuery } from '@tanstack/react-query'
 import { getMe } from '../../api/auth'
@@ -11,6 +11,7 @@ const navLinks = [
   { to: '/reflections', icon: BookOpen, label: 'Reflect' },
   { to: '/milestones', icon: Star, label: 'Milestones' },
   { to: '/profile', icon: User, label: 'Profile' },
+  { to: '/admin', icon: BarChart2, label: 'Analytics' },
 ]
 
 export default function Navbar() {

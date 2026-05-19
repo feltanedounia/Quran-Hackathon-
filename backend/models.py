@@ -235,3 +235,16 @@ class Bookmark(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="bookmarks")
+
+
+class AnalyticsEvent(Base):
+    """Fine-grained event log for engagement analytics."""
+    __tablename__ = "analytics_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    event_type = Column(String, nullable=False)   # surah_view, audio_play, juzz_navigate, etc.
+    event_data = Column(Text, nullable=True)       # JSON payload
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    user = relationship("User")

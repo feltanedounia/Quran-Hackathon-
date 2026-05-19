@@ -2,13 +2,13 @@ import client from './client'
 import type { User } from '../types'
 
 export const register = (data) =>
-  client.post('/api/auth/register', data).then(r => r.data)
+  client.post('/auth/register', data).then(r => r.data)
 
 export const login = (data) =>
-  client.post('/api/auth/login', data).then(r => r.data)
+  client.post('/auth/login', data).then(r => r.data)
 
 export const getMe = () =>
-  client.get('/api/auth/me').then(r => r.data)
+  client.get('/auth/me').then(r => r.data)
 
 export const updateMe = (data) =>
-  client.put('/api/auth/me', data).then(r => r.data)
+  client.put('/auth/me', data).then(r => r.data)

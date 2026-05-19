@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const client = axios.create({ baseURL: "https://rawdah-quran-hackathon-project-7.onrender.com" })
+const client = axios.create({ baseURL: "https://rawdah-quran-hackathon-project-7.onrender.com/api" })
 
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('rawdah_token')

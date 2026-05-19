@@ -80,7 +80,29 @@ def _ensure_user_qf_columns():
 _ensure_user_qf_columns()
 
 
-from routes import auth, reading, verses, garden, buddies, milestones, bookmarks
+def _ensure_analytics_table():
+    """Create analytics_events table if it doesn't exist (safe no-op if already present)."""
+    with engine.begin() as conn:
+        existing = _get_existing_columns(conn, "analytics_events")
+        if not existing:
+            conn.exec_driver_sql("""
+                CREATE TABLE IF NOT EXISTS analytics_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER REFERENCES users(id),
+                    event_type VARCHAR NOT NULL,
+                    event_data TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_analytics_events_created_at ON analytics_events (created_at)"
+            )
+
+
+_ensure_analytics_table()
+
+
+from routes import auth, reading, verses, garden, buddies, milestones, bookmarks, analytics
 
 
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -120,6 +142,7 @@ app.include_router(garden.router, prefix="/api")
 app.include_router(buddies.router, prefix="/api")
 app.include_router(milestones.router, prefix="/api")
 app.include_router(bookmarks.router, prefix="/api")
+app.include_router(analytics.router, prefix="/api")
 
 
 @app.get("/health")
