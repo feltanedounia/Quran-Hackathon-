@@ -171,6 +171,7 @@ export default function QuranPage() {
   const [playingAyah, setPlayingAyah] = useState<number | null>(null)
   const [navMode, setNavMode] = useState<NavMode>('surah')
   const [scrollToAyah, setScrollToAyah] = useState<number | null>(null)
+  const [bookmarkError, setBookmarkError] = useState<string | null>(null)
 
   // Go-to-ayah input
   const [gotoValue, setGotoValue] = useState('')
@@ -226,12 +227,26 @@ export default function QuranPage() {
         surah_name: selectedSurah!.englishName,
         verse_text: `${ayah.text} — ${ayah.translation}`,
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookmarks'] }),
+    onSuccess: () => {
+      setBookmarkError(null)
+      queryClient.invalidateQueries({ queryKey: ['bookmarks'] })
+    },
+    onError: (error) => {
+      setBookmarkError('Failed to save bookmark. Please try again.')
+      console.error('Bookmark error:', error)
+    },
   })
 
   const { mutate: removeBookmark } = useMutation({
     mutationFn: (id: number) => deleteBookmark(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookmarks'] }),
+    onSuccess: () => {
+      setBookmarkError(null)
+      queryClient.invalidateQueries({ queryKey: ['bookmarks'] })
+    },
+    onError: (error) => {
+      setBookmarkError('Failed to remove bookmark. Please try again.')
+      console.error('Remove bookmark error:', error)
+    },
   })
 
   const { mutate: saveSession, isPending: savingSession } = useMutation({
@@ -764,6 +779,19 @@ export default function QuranPage() {
                         <span className="text-xs font-semibold text-garden-700">{scrollSpeed}x</span>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Error notification */}
+                {bookmarkError && (
+                  <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-start justify-between">
+                    <span>{bookmarkError}</span>
+                    <button
+                      onClick={() => setBookmarkError(null)}
+                      className="text-red-400 hover:text-red-600 ml-2 flex-shrink-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                 )}
 

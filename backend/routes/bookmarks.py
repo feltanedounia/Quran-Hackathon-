@@ -42,16 +42,20 @@ async def add_bookmark(
 
     # Sync to Quran Foundation User API if user has connected their QF account
     if current_user.qf_access_token and qf_user_api.is_configured():
-        qf_data = await qf_user_api.add_bookmark(
-            current_user.qf_access_token,
-            body.verse_key,
-            body.surah_number,
-            body.ayah_number,
-        )
-        if qf_data and qf_data.get("id"):
-            bookmark.qf_bookmark_id = str(qf_data["id"])
-            db.commit()
-            db.refresh(bookmark)
+        try:
+            qf_data = await qf_user_api.add_bookmark(
+                current_user.qf_access_token,
+                body.verse_key,
+                body.surah_number,
+                body.ayah_number,
+            )
+            if qf_data and qf_data.get("id"):
+                bookmark.qf_bookmark_id = str(qf_data["id"])
+                db.commit()
+                db.refresh(bookmark)
+        except Exception as e:
+            # Log the error but don't fail the bookmark save
+            print(f"Warning: Failed to sync bookmark to QF API: {e}")
 
     return bookmark
 
@@ -88,7 +92,11 @@ async def delete_bookmark(
 
     # Remove from QF too
     if current_user.qf_access_token and bookmark.qf_bookmark_id and qf_user_api.is_configured():
-        await qf_user_api.delete_bookmark(current_user.qf_access_token, bookmark.qf_bookmark_id)
+        try:
+            await qf_user_api.delete_bookmark(current_user.qf_access_token, bookmark.qf_bookmark_id)
+        except Exception as e:
+            # Log the error but don't fail the local delete
+            print(f"Warning: Failed to remove bookmark from QF API: {e}")
 
     db.delete(bookmark)
     db.commit()
