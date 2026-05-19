@@ -113,17 +113,19 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# FIXED CORS 
+# CORS: support local dev, configured frontend URL, and Vercel preview/prod URLs.
+frontend_url = os.getenv("FRONTEND_URL", "").strip()
+allowed_origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+if frontend_url:
+    allowed_origins.append(frontend_url.rstrip("/"))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-
-        "https://rawdah-quran-hackathon-project-81v3.vercel.app",
-        "https://rawdah-quran-hackathon-proj-git-d60222-dounia-feltanes-projects.vercel.app",
-        "https://rawdah-quran-hackathon-project-81v3-boxcb0hof.vercel.app",
-    ],
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
