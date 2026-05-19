@@ -70,7 +70,10 @@ export default function SessionPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
-  const activityType = (type as ActivityType) || 'reading'
+  const isValidActivityType = (value: string | undefined): value is ActivityType => (
+    value === 'reading' || value === 'recitation' || value === 'memorization'
+  )
+  const activityType: ActivityType = isValidActivityType(type) ? type : 'reading'
   const config = activityConfig[activityType] ?? activityConfig.reading
 
   const [step, setStep] = useState<Step>('session')
@@ -170,6 +173,7 @@ export default function SessionPage() {
 
   const handleSave = () => {
     saveSession({
+      activity_type: activityType,
       verses_read: versesRead || 1,
       minutes_spent: sessionMinutes,
       surah_number: surahNum ? parseInt(surahNum) : undefined,

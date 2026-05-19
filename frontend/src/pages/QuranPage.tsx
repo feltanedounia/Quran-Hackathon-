@@ -12,6 +12,7 @@ import { addBookmark, listBookmarks, deleteBookmark } from '../api/bookmarks'
 import type { Bookmark as BookmarkType } from '../api/bookmarks'
 import { getSessions, logSession } from '../api/reading'
 import { trackEvent } from '../api/analytics'
+import type { ActivityType } from '../types'
 
 interface Surah {
   number: number
@@ -152,6 +153,10 @@ const fetchSurah = async (number: number): Promise<Ayah[]> => {
 
 type NavMode = 'surah' | 'juzz' | 'hizb' | 'bookmarks'
 
+const isActivityType = (value: string | null): value is ActivityType => (
+  value === 'reading' || value === 'recitation' || value === 'memorization'
+)
+
 function formatTime(seconds: number) {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
@@ -182,7 +187,8 @@ export default function QuranPage() {
   const autoScrollRef = useRef<number | null>(null)
 
   // Session timer (from ?session= param)
-  const sessionType = searchParams.get('session')
+  const sessionTypeParam = searchParams.get('session')
+  const sessionType: ActivityType | null = isActivityType(sessionTypeParam) ? sessionTypeParam : null
   const sessionStart = searchParams.get('start')
   const [timerSeconds, setTimerSeconds] = useState(0)
   const [timerCollapsed, setTimerCollapsed] = useState(false)
@@ -211,8 +217,8 @@ export default function QuranPage() {
   const { data: bookmarks = [] } = useQuery({ queryKey: ['bookmarks'], queryFn: listBookmarks })
 
   const { data: sessions = [] } = useQuery({
-    queryKey: ['reading-sessions'],
-    queryFn: () => getSessions(5),
+    queryKey: ['reading-sessions', sessionType ?? 'all'],
+    queryFn: () => getSessions(5, sessionType ?? undefined),
     staleTime: 60_000,
   })
 
@@ -387,6 +393,7 @@ export default function QuranPage() {
 
   const handleSaveSession = () => {
     saveSession({
+      activity_type: sessionType ?? 'reading',
       verses_read: parseInt(versesRead) || 1,
       minutes_spent: Math.round(timerSeconds / 60 * 10) / 10,
       surah_number: selectedSurah?.number,

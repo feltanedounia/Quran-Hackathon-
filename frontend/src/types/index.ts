@@ -35,6 +35,7 @@ export interface EngagementStatus {
 }
 
 export interface ReadingSessionCreate {
+  activity_type?: ActivityType
   verses_read: number
   minutes_spent: number
   surah_number?: number
@@ -46,6 +47,7 @@ export interface ReadingSessionCreate {
 export interface ReadingSession {
   id: number
   date: string
+  activity_type: ActivityType
   verses_read: number
   minutes_spent: number
   surah_number?: number

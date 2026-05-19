@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from typing import Optional, List
+from typing import Optional, List, Literal
 from pydantic import BaseModel, EmailStr
 from models import Gender, BuddyStatus, MilestoneType, ResourceCategory
 
@@ -53,6 +53,7 @@ class UserOut(BaseModel):
 # ── Reading Sessions ───────────────────────────────────────────────────────────
 
 class ReadingSessionCreate(BaseModel):
+    activity_type: Literal["reading", "recitation", "memorization"] = "reading"
     verses_read: int
     minutes_spent: float
     surah_number: Optional[int] = None
@@ -65,6 +66,7 @@ class ReadingSessionCreate(BaseModel):
 class ReadingSessionOut(BaseModel):
     id: int
     date: date
+    activity_type: str
     verses_read: int
     minutes_spent: float
     surah_number: Optional[int]

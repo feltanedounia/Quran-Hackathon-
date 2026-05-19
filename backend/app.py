@@ -80,6 +80,18 @@ def _ensure_user_qf_columns():
 _ensure_user_qf_columns()
 
 
+def _ensure_reading_session_activity_column():
+    with engine.begin() as conn:
+        existing = _get_existing_columns(conn, "reading_sessions")
+        if "activity_type" not in existing:
+            conn.exec_driver_sql(
+                "ALTER TABLE reading_sessions ADD COLUMN activity_type VARCHAR DEFAULT 'reading'"
+            )
+
+
+_ensure_reading_session_activity_column()
+
+
 def _ensure_analytics_table():
     """Create analytics_events table if it doesn't exist (safe no-op if already present)."""
     with engine.begin() as conn:

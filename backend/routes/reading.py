@@ -28,6 +28,7 @@ def log_session(
     current_user: models.User = Depends(auth_utils.get_current_user),
 ):
     session_date = body.date or date.today()
+    activity_type = body.activity_type or "reading"
 
     # Prevent duplicate sessions on same day
     existing = (
@@ -35,6 +36,7 @@ def log_session(
         .filter(
             models.ReadingSession.user_id == current_user.id,
             models.ReadingSession.date == session_date,
+            models.ReadingSession.activity_type == activity_type,
         )
         .first()
     )
@@ -50,6 +52,7 @@ def log_session(
     session = models.ReadingSession(
         user_id=current_user.id,
         date=session_date,
+        activity_type=activity_type,
         verses_read=body.verses_read,
         minutes_spent=body.minutes_spent,
         surah_number=body.surah_number,
@@ -105,16 +108,15 @@ async def upload_accountability_photo(
 @router.get("/sessions", response_model=List[schemas.ReadingSessionOut])
 def get_sessions(
     limit: int = 30,
+    activity_type: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth_utils.get_current_user),
 ):
-    return (
-        db.query(models.ReadingSession)
-        .filter(models.ReadingSession.user_id == current_user.id)
-        .order_by(models.ReadingSession.date.desc())
-        .limit(limit)
-        .all()
-    )
+    query = db.query(models.ReadingSession).filter(models.ReadingSession.user_id == current_user.id)
+    if activity_type in {"reading", "recitation", "memorization"}:
+        query = query.filter(models.ReadingSession.activity_type == activity_type)
+
+    return query.order_by(models.ReadingSession.date.desc()).limit(limit).all()
 
 
 @router.get("/streak")
